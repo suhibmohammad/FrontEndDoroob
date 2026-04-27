@@ -1,27 +1,25 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '../components/Navbar';
-import Sidebar from '../components/Sidebar';
+import LeftSidebar from '../components/LeftSidebar';
 import RightPanel from '../components/RightPanel';
 import JobCard from '../components/JobCard';
 import Footer from '../components/Footer';
 import { useJobs } from '../context/JobContext';
+import { useUser } from '../context/UserContext';
 
 export default function JobsPage() {
+  const { user } = useUser();
   const { jobs, loading, error, fetchJobs, fetchJobsBySkill, savedJobIds, toggleSaveJob } = useJobs();
+  
   const [search, setSearch] = useState('');
-  const [jobTypes, setJobTypes] = useState([]);
-  const [experience, setExperience] = useState('');
+  const [jobTypes, setJobTypes] = useState([]); // [FullTime, PartTime, Remote]
+  const [experience, setExperience] = useState(''); // fresh, junior, mid, senior
   const [currentPage, setCurrentPage] = useState(1);
   const [isSkillSearch, setIsSkillSearch] = useState(false);
   const jobsPerPage = 4;
 
-  const toggleJobType = (type) => {
-    setJobTypes(prev =>
-      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
-    );
-  };
-
-  // البحث بالمهارة عن طريق الـ API
+  // --- Handlers ---
   const handleSearch = async () => {
     setCurrentPage(1);
     if (search.trim()) {
@@ -33,182 +31,190 @@ export default function JobsPage() {
     }
   };
 
-  // إعادة تحميل كل الوظائف
   const handleClearSearch = async () => {
     setSearch('');
     setIsSkillSearch(false);
     setCurrentPage(1);
+    setJobTypes([]);
+    setExperience('');
     await fetchJobs();
   };
 
-  // تحويل بيانات الـ API — هسا بيجي mapped من الـ Context
-  const mappedJobs = jobs;
-
-  const filtered = mappedJobs.filter(job => {
-    const matchType = jobTypes.length === 0 || jobTypes.some(t =>
-      job.type.toLowerCase().includes(t.toLowerCase()) ||
-      job.jobType.toLowerCase().includes(t.toLowerCase())
+  const toggleJobType = (type) => {
+    // شلنا الفراغ عشان يطابق داتا الـ API (مثلاً Full Time تصير FullTime)
+    const formattedType = type.replace(/\s+/g, ''); 
+    setJobTypes(prev =>
+      prev.includes(formattedType) ? prev.filter(t => t !== formattedType) : [...prev, formattedType]
     );
-    const matchExp = !experience || job.experience.toLowerCase() === experience.toLowerCase();
+    setCurrentPage(1);
+  };
+
+  // --- 🔥 الفلترة الذكية (Filtering Logic) ---
+  const filteredJobs = jobs.filter(job => {
+    // 1. فلترة نوع العمل (FullTime / PartTime / Remote)
+    const matchType = jobTypes.length === 0 || jobTypes.some(t => {
+      const jobTypeData = (job.type || job.jobType || "").replace(/\s+/g, '').toLowerCase();
+      return jobTypeData.includes(t.toLowerCase());
+    });
+
+    // 2. فلترة مستوى الخبرة (Junior / Mid / Senior)
+    const matchExp = !experience || (job.experience || "").toLowerCase().includes(experience.toLowerCase());
+
     return matchType && matchExp;
   });
 
-  const totalPages = Math.ceil(filtered.length / jobsPerPage);
-  const paginated = filtered.slice((currentPage - 1) * jobsPerPage, currentPage * jobsPerPage);
-
-  const handleSave = (id) => {
-    const job = jobs.find(j => j.id === id);
-    if (job) toggleSaveJob(job);
-  };
+  const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
+  const paginatedJobs = filteredJobs.slice((currentPage - 1) * jobsPerPage, currentPage * jobsPerPage);
 
   return (
-    <div className="bg-gray-100 overflow-x-hidden pt-16">
+    <div className="bg-[#F3F7FA] min-h-screen font-sans antialiased selection:bg-blue-100">
       <Navbar />
-      <div className="grid grid-cols-1 gap-5 mx-5 md:grid-cols-3 my-5 lg:grid-cols-12">
-        <Sidebar />
 
-        {/* Middle Column */}
-        <div className="col-span-6 bg-white border rounded-md m-2 gap-4 p-4 shadow-lg shadow-gray-500 mx-auto w-full">
-          <div className="flex flex-col justify-center items-center gap-3">
+      <div className="max-w-[1400px] mx-auto pt-24 md:pt-28 px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col lg:flex-row gap-6">
+          
+          <aside className="hidden lg:block w-[300px] shrink-0 sticky top-24 h-fit">
+            <LeftSidebar user={user} />
+          </aside>
 
-            {/* Search & Filter */}
-            <div className="bg-white p-6 rounded-xl shadow-sm mb-6 border border-gray-100 w-full" dir="ltr">
-              <div className="flex flex-wrap gap-4 mb-6">
-                <div className="flex-1 min-w-[200px] relative">
-                  <input
-                    type="text"
-                    placeholder="Search by skill (e.g. React, .NET)..."
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
-                    className="w-full pr-4 pl-10 py-3 rounded-lg border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none"
-                  />
-                  <span className="absolute left-3 top-3.5 text-gray-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </span>
-                </div>
-                <button
-                  onClick={handleSearch}
-                  className="bg-blue-800 hover:bg-indigo-700 text-white px-8 py-3 rounded-lg font-semibold transition-all duration-200 shadow-md"
-                >
-                  Search
-                </button>
-                {isSkillSearch && (
-                  <button
-                    onClick={handleClearSearch}
-                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-lg font-semibold transition-all duration-200"
-                  >
-                    Clear
-                  </button>
-                )}
+          <main className="flex-1 min-w-0 space-y-6 pb-20">
+            
+            <div className="flex items-center justify-between px-2">
+              <div>
+                <h1 className="text-2xl md:text-3xl font-black text-[#1E293B]">Explore Jobs 🚀</h1>
+                <p className="text-slate-500 text-sm font-medium mt-1">Find your next career move</p>
               </div>
-
-              <hr className="mb-6 border-gray-100" />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                  <label className="block text-gray-600 font-semibold mb-3 text-sm uppercase tracking-wider">Job Type</label>
-                  <div className="flex flex-wrap gap-3">
-                    {['Full Time', 'Part Time', 'Remote'].map(type => (
-                      <label key={type} className="cursor-pointer" onClick={() => { toggleJobType(type); setCurrentPage(1); }}>
-                        <span className={`px-4 py-2 rounded-full border text-sm transition-all inline-block ${jobTypes.includes(type) ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-200'}`}>
-                          {type}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-gray-600 font-semibold mb-3 text-sm uppercase tracking-wider">Required Experience</label>
-                  <select
-                    value={experience}
-                    onChange={e => { setExperience(e.target.value); setCurrentPage(1); }}
-                    className="w-full p-3 rounded-lg border border-gray-200 bg-gray-50 text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 outline-none transition-all cursor-pointer"
-                  >
-                    <option value="">Select Experience Level...</option>
-                    <option value="fresh">Fresh Graduate (0-1 Years)</option>
-                    <option value="junior">Junior (1-3 Years)</option>
-                    <option value="mid">Mid-Level (3-5 Years)</option>
-                    <option value="senior">Senior (5+ Years)</option>
-                  </select>
-                </div>
+              <div className="hidden sm:block bg-white px-4 py-2 rounded-2xl shadow-sm border border-slate-100 font-black text-[11px] text-blue-600 uppercase">
+                {filteredJobs.length} Positions Found
               </div>
             </div>
 
-            {/* Loading State */}
-            {loading && (
-              <div className="text-center py-10">
-                <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-                <p className="text-gray-500">Loading jobs...</p>
+            {/* Filter Panel */}
+            <section className="bg-white rounded-[2rem] p-4 md:p-8 shadow-sm border border-slate-100 transition-all">
+              <div className="relative mb-8">
+                <input
+                  type="text"
+                  placeholder="Search skills (React, .NET, UI/UX)..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                  className="w-full pl-12 pr-32 py-5 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 outline-none shadow-inner"
+                />
+                <i className="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-2">
+                  <button onClick={handleSearch} className="bg-[#0F172A] text-white px-6 py-3 rounded-xl font-bold text-xs hover:bg-blue-600 transition-all shadow-lg shadow-slate-200">Search</button>
+                </div>
               </div>
-            )}
 
-            {/* Error State */}
-            {error && !loading && (
-              <div className="text-red-600 text-center py-10 bg-red-50 rounded-xl px-4 w-full">
-                <p className="font-semibold">Failed to load jobs</p>
-                <p className="text-sm mt-1">{error}</p>
-              </div>
-            )}
-
-            {/* Job Cards */}
-            {!loading && !error && (
-              <>
-                {isSkillSearch && (
-                  <div className="w-full mb-2 text-sm text-gray-500">
-                    Showing results for skill: <span className="font-bold text-indigo-600">"{search}"</span> ({filtered.length} jobs found)
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-slate-50">
+                {/* Job Type Filter */}
+                <div>
+                  <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest block mb-4">Employment Type</span>
+                  <div className="flex flex-wrap gap-2">
+                    {['Full Time', 'Part Time', 'Remote'].map(type => {
+                      const formatted = type.replace(/\s+/g, '');
+                      const isActive = jobTypes.includes(formatted);
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => toggleJobType(type)}
+                          className={`px-5 py-2.5 rounded-xl text-[11px] font-bold transition-all border ${
+                            isActive 
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-100 scale-105' 
+                            : 'bg-white text-slate-500 border-slate-100 hover:border-blue-200 hover:text-blue-600'
+                          }`}
+                        >
+                          {type}
+                        </button>
+                      );
+                    })}
                   </div>
-                )}
-                {paginated.length === 0 ? (
-                  <div className="text-gray-500 text-center py-10">No jobs found matching your criteria.</div>
-                ) : (
-                  paginated.map(job => (
-                    <JobCard key={job.id} job={job} savedJobs={savedJobIds} onSave={handleSave} />
-                  ))
-                )}
-              </>
-            )}
+                </div>
+
+                {/* Experience Level Filter */}
+                <div>
+                  <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest block mb-4">Experience Level</span>
+                  <select 
+                    value={experience}
+                    onChange={(e) => { setExperience(e.target.value); setCurrentPage(1); }}
+                    className="w-full bg-slate-50 border-none rounded-xl p-4 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-sm"
+                  >
+                    <option value="">All Experience Levels</option>
+                    <option value="fresh">Fresh / Entry Level</option>
+                    <option value="junior">Junior Level</option>
+                    <option value="mid">Mid-Level</option>
+                    <option value="senior">Senior Level</option>
+                  </select>
+                </div>
+              </div>
+
+              {isSkillSearch && (
+                <div className="mt-4 flex justify-end">
+                  <button onClick={handleClearSearch} className="text-[10px] font-black text-red-400 uppercase hover:text-red-600 transition-colors">
+                    Reset All Filters ×
+                  </button>
+                </div>
+              )}
+            </section>
+
+            {/* Job List */}
+            <div className="grid gap-6">
+              {loading ? (
+                <div className="py-20 text-center space-y-4">
+                  <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                  <p className="text-slate-400 font-bold text-sm">Searching for matches...</p>
+                </div>
+              ) : (
+                <AnimatePresence mode='popLayout'>
+                  {paginatedJobs.length > 0 ? (
+                    paginatedJobs.map(job => (
+                      <motion.div key={job.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}>
+                        <JobCard job={job} savedJobs={savedJobIds} onSave={() => toggleSaveJob(job)} />
+                      </motion.div>
+                    ))
+                  ) : (
+                    <div className="py-20 text-center bg-white rounded-[2rem] border-2 border-dashed border-slate-200 text-slate-400 font-bold">
+                      No jobs found matching these filters.
+                    </div>
+                  )}
+                </AnimatePresence>
+              )}
+            </div>
 
             {/* Pagination */}
             {!loading && totalPages > 1 && (
-              <div className="flex items-center justify-between border border-gray-400 bg-white px-2 py-4 sm:px-6 rounded-xl shadow-sm mt-8 w-full" dir="ltr">
-                <div className="hidden sm:flex sm:flex-1 px-5 sm:items-center sm:justify-between">
-                  <p className="text-sm text-gray-700">
-                    Showing <span className="font-semibold">{(currentPage - 1) * jobsPerPage + 1}</span> to{' '}
-                    <span className="font-semibold">{Math.min(currentPage * jobsPerPage, filtered.length)}</span> of{' '}
-                    <span className="font-semibold">{filtered.length}</span> results
-                  </p>
-                </div>
-                <nav className="isolate inline-flex -space-x-px rounded-md gap-2">
-                  <button onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                    className="relative inline-flex items-center rounded-lg px-3 py-2 text-gray-400 border border-gray-200 hover:bg-gray-50 transition-colors">
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
-                    </svg>
+              <div className="flex justify-center gap-2 pt-8">
+                {[...Array(totalPages)].map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setCurrentPage(i + 1);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className={`w-10 h-10 rounded-xl font-bold text-xs transition-all ${
+                      currentPage === i + 1 
+                      ? 'bg-[#0F172A] text-white shadow-lg' 
+                      : 'bg-white text-slate-400 border border-slate-100 hover:bg-slate-50 shadow-sm'
+                    }`}
+                  >
+                    {i + 1}
                   </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                    <button key={page} onClick={() => setCurrentPage(page)}
-                      className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${currentPage === page ? 'bg-indigo-600 text-white' : 'text-gray-900 border border-gray-200 hover:bg-gray-50'}`}>
-                      {page}
-                    </button>
-                  ))}
-                  <button onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-                    className="relative inline-flex items-center rounded-lg px-3 py-2 text-gray-400 border border-gray-200 hover:bg-gray-50 transition-colors">
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </nav>
+                ))}
               </div>
             )}
-          </div>
-        </div>
+          </main>
 
-        <RightPanel />
+          <aside className="hidden xl:block w-[320px] shrink-0 sticky top-24 h-fit space-y-6">
+            <RightPanel />
+            <div className="bg-blue-600 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-xl shadow-blue-200">
+               <h4 className="font-black text-xl mb-2 italic">Hiring?</h4>
+               <p className="text-blue-100 text-xs mb-6 font-medium leading-relaxed">Connect with the best talent in the region now.</p>
+               <button className="w-full bg-white text-blue-600 py-4 rounded-2xl font-black text-xs hover:bg-[#0F172A] hover:text-white transition-all transform active:scale-95 shadow-lg">Post a Job +</button>
+            </div>
+           </aside>
+
+        </div>
       </div>
-      <Footer />
     </div>
   );
 }

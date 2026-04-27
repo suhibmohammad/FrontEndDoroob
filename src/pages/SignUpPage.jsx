@@ -31,38 +31,48 @@ export default function SignUpPage() {
       e.confirmPassword = "Passwords do not match";
     return e;
   };
-
+  
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    const e2 = validate();
-    if (Object.keys(e2).length > 0 || form.password !== form.confirmPassword) {
-      setErrors(e2);
-      setLoading(false);
-      return;
+  e.preventDefault();
+  setLoading(true);
+  
+  try {
+    const { confirmPassword, ...registerData } = form;
+    const response = await Register(registerData);
+
+    if (response.status === 200 || response.status === 201) {
+      setUserEmail(form.email);
+      navigate("/email-verification");
     }
-    try {
-      const { confirmPassword, ...registerData } = form;
-      const userData = await Register(registerData);
-      console.log("no error");
-      
-      if (userData.status === 200) {
+  } catch (error) {
+    // Axios بيحط الرد الجاي من السيرفر جوا error.response
+    const response = error.response;
+
+    if (response) {
+      // الاسم الصحيح هو .status مش .statusCode
+      const status = response.status; 
+      const data = response.data;
+
+      console.log("Status Code:", status);
+      console.log("Data from server:", data);
+
+      // الفحص بناءً على الـ Status أو محتوى الـ JSON اللي بعته
+      if (status === 409 || data.requiresVerification === true) {
+        console.log("User exists, redirecting to verification...");
         setUserEmail(form.email);
-        console.log("تم تسجيل الدخول بنجاح!", userData);
         navigate("/email-verification");
+        return; // عشان يوقف وما يكمل لباقي الأخطاء
       }
-    } catch (error) {
-      console.error("Registration Error:", error.response);
-
-      const serverMessage =
-        error.response?.data?.message ||
-        "حدث خطأ في السيرفر، يرجى المحاولة لاحقاً";
-
-      setErrors({ server: serverMessage });
-    } finally {
-      setLoading(false);
     }
-  };
+
+    // إذا وصل هون، معناها الخطأ مش 409
+    const serverMessage = response?.data?.message || "حدث خطأ غير متوقع";
+    setErrors({ server: serverMessage });
+    
+  } finally {
+    setLoading(false);
+  }
+};
 
   const field = (label, name, type = "text", placeholder = "") => (
     <div>

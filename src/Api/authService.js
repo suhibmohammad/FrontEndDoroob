@@ -23,7 +23,7 @@ export const Register = async (credentials) => {
         console.log(response.data);
         return response;
     } catch (error) {
-        throw error.response ? error.response.data : new Error("Registration failed");
+        throw error 
     }
 };
 

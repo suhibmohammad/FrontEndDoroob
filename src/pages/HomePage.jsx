@@ -1,265 +1,215 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, Radar as RadarArea } from 'recharts';
+
+// Components
 import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
+import LeftSidebar from '../components/LeftSidebar';
+import RightPanel from '../components/RightPanel';
 import { useUser } from '../context/UserContext';
 
-// --- مكون القائمة الجانبية (Sidebar) ---
-const Sidebar = ({ user }) => {
-  const { logout } = useUser();
-  const menuItems = [
-    { name: 'Home', icon: 'fa-house', path: '/home' },
-    { name: 'Jobs', icon: 'fa-briefcase', path: '/jobs' },
-    { name: 'My Applications', icon: 'fa-file-lines', path: '/applications' },
-    { name: 'Saved Jobs', icon: 'fa-bookmark', path: '/saved' },
-  ];
+// مكوّن الرادار البصري
+const SkillRadar = ({ userSkills, roadmapData }) => {
+  const masteredNames = userSkills.map(s => (typeof s === 'string' ? s : (s?.skillName || s?.name || "")).toLowerCase());
+  const data = (roadmapData || []).slice(0, 6).map(skill => {
+    const name = skill.name || skill.skillName || "Skill";
+    const isMastered = masteredNames.includes(name.toLowerCase());
+    return { subject: name, score: isMastered ? 100 : 30, fullMark: 100 };
+  });
 
   return (
-    <div className="space-y-6">
-      {/* Profile Card */}
-      <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-100 flex flex-col items-center text-center group transition-all hover:shadow-md hover:shadow-blue-100/20">
-        <div className="relative mb-4">
-          <img className="w-20 h-20 rounded-3xl object-cover ring-4 ring-blue-50 group-hover:scale-105 transition-transform duration-500" src={user?.profileImageUrl || "/Abood.png"} alt="" />
-          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-4 border-white rounded-full"></div>
+    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+      className="bg-slate-900 rounded-[3rem] p-8 shadow-2xl border border-slate-800 relative overflow-hidden mb-8"
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent animate-pulse" />
+      <div className="relative z-10 text-left">
+        <h3 className="text-white font-black italic uppercase tracking-tighter text-xl">Skill Precision Radar</h3>
+        <p className="text-indigo-400 text-[10px] font-black uppercase tracking-[0.3em] mb-6">Live AI Diagnostics</p>
+        <div className="h-[280px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data.length > 0 ? data : [{subject: 'No Data', score: 0}]} >
+              <PolarGrid stroke="#1e293b" />
+              <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} />
+              <RadarArea name="Skills" dataKey="score" stroke="#6366f1" fill="#6366f1" fillOpacity={0.5} />
+            </RadarChart>
+          </ResponsiveContainer>
         </div>
-        <h3 className="text-lg font-black text-slate-900 leading-tight">{user?.fName} {user?.lName}</h3>
-        <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-2 px-4 py-1.5 bg-blue-50/50 rounded-xl">{user?.headline || 'Developer'}</p>
-        <Link to="/profile" className="w-full mt-6 py-3 border-2 border-slate-50 rounded-2xl text-[10px] font-black text-slate-400 hover:bg-slate-900 hover:border-slate-900 hover:text-white transition-all uppercase tracking-widest">
-          View Profile
-        </Link>
       </div>
-
-      {/* Nav Links */}
-      <div className="bg-white rounded-[2.5rem] p-4 shadow-sm border border-slate-100 space-y-2">
-        {menuItems.map((item) => (
-          <Link
-            key={item.name}
-            to={item.path}
-            className="w-full flex items-center gap-4 px-5 py-3.5 rounded-2xl transition-all group text-slate-500 hover:bg-blue-600 hover:text-white"
-          >
-            <i className={`fa-solid ${item.icon} text-lg group-hover:scale-110 transition-transform`}></i>
-            <span className="text-sm font-bold">{item.name}</span>
-          </Link>
-        ))}
-        <hr className="my-4 border-slate-50" />
-        <button
-          onClick={logout}
-          className="w-full flex items-center gap-4 px-5 py-3.5 rounded-2xl text-rose-500 hover:bg-rose-50 transition-all font-bold text-sm">
-          <i className="fa-solid fa-right-from-bracket"></i>
-          <span>Logout</span>
-        </button>
-      </div>
-
-      <Link to="/create-company" className="w-full py-4 bg-slate-900 text-white rounded-[1.8rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-indigo-950 transition-all flex items-center justify-center gap-2">
-        <i className="fa-solid fa-plus-circle text-xs"></i> Create Company
-      </Link>
-    </div>
+    </motion.div>
   );
 };
 
-
-// --- مكون الجانب الأيمن (RightPanel) ---
-const RightPanel = () => {
-  const suggestions = [
-    { name: 'Abdalrahman Baker', role: '.NET Developer', avatar: '/Abood.png' },
-    { name: 'Suhaib Al-Khalidy', role: 'Frontend Developer', avatar: '/Abood.png' },
-  ];
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-[2.5rem] p-7 shadow-sm border border-slate-100">
-        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8 flex items-center gap-2">
-            <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
-            Suggestions
-        </h3>
-        <div className="space-y-6">
-          {suggestions.map((person, i) => (
-            <div key={i} className="flex items-center gap-3 group">
-              <img src={person.avatar} className="w-12 h-12 rounded-2xl object-cover ring-2 ring-slate-50 group-hover:ring-blue-100 transition-all" alt="" />
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-black text-slate-800 truncate">{person.name}</h4>
-                <p className="text-[10px] font-bold text-slate-400 truncate uppercase tracking-tighter">{person.role}</p>
-              </div>
-              <button className="bg-blue-50 text-blue-600 w-9 h-9 rounded-xl hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center">
-                <i className="fa-solid fa-plus text-xs"></i>
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-[2.5rem] p-7 shadow-lg shadow-blue-200 text-white relative overflow-hidden group">
-        <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-all"></div>
-        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] mb-6 opacity-80">Featured Company</h3>
-        <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center">
-                <img src="googleLogo.png" className="w-7" alt="" />
-            </div>
-            <div>
-                <h4 className="text-base font-black">Google</h4>
-                <p className="text-xs opacity-70">Tech Industry</p>
-            </div>
-        </div>
-        <button className="w-full mt-8 py-3.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-blue-600 transition-all">
-            Follow Company
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// --- الصفحة الرئيسية (HomePage) ---
 export default function HomePage() {
-  const { user } = useUser();
-  const [showPostModal, setShowPostModal] = useState(false);
-  const [postText, setPostText] = useState('');
-  const [postImagePreview, setPostImagePreview] = useState(null);
-  const [posts, setPosts] = useState([
-    {
-      id: 1,
-      user: 'Abdalrahman Baker',
-      date: '1/4/2026',
-      text: 'Software Engineering is not just about coding, it is about solving problems and creating value. 🚀',
-      image: '/pexels-benjamin-adjei-abayie-2158492422-36659831.jpg',
-      likes: 124,
-      comments: 18,
-      liked: false,
-    }
-  ]);
+  const { user, setUser } = useUser();
+  const [activeTab, setActiveTab] = useState('to-learn');
+  const [isUploading, setIsUploading] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (ev) => setPostImagePreview(ev.target.result);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handlePost = (e) => {
-    e.preventDefault();
-    if (!postText.trim() && !postImagePreview) return;
-    const newPost = {
-      id: Date.now(),
-      user: user?.fName + ' ' + user?.lName || 'User',
-      date: 'Today',
-      text: postText,
-      image: postImagePreview,
-      likes: 0,
-      comments: 0,
-      liked: false,
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!user?.id) { setIsLoadingData(false); return; }
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`http://doroob.runasp.net/api/Dashboard/${user.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.status === 200) setUser(prev => ({ ...prev, ...response.data }));
+      } catch (e) { console.error(e); } finally { setIsLoadingData(false); }
     };
-    setPosts([newPost, ...posts]);
-    setPostText('');
-    setPostImagePreview(null);
-    setShowPostModal(false);
+    fetchDashboardData();
+  }, [user?.id, setUser]);
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    const token = localStorage.getItem('token');
+    setIsUploading(true);
+    try {
+      await axios.post(`http://doroob.runasp.net/api/Resume/upload-resume/${user.id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data', 'Authorization': `Bearer ${token}` }
+      });
+      const updated = await axios.post(`http://doroob.runasp.net/api/Dashboard/analyze-profile/${user.id}`, {}, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (updated.status === 200) setUser(prev => ({ ...prev, ...updated.data }));
+    } catch (e) { alert("Error analyzing PDF."); } finally { setIsUploading(false); }
   };
+
+  const handleAnalyzeCurrentSkills = async () => {
+    const token = localStorage.getItem('token');
+    setIsAnalyzing(true);
+    try {
+      const response = await axios.post(`http://doroob.runasp.net/api/Dashboard/analyze-profile/${user.id}`, {}, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.status === 200) setUser(prev => ({ ...prev, ...response.data }));
+    } catch (e) { alert("AI Analysis failed."); } finally { setIsAnalyzing(false); }
+  };
+
+  const roadmapData = user?.roadmapData ? JSON.parse(user.roadmapData) : [];
+  const masteredSkills = user?.skills || [];
+  const masteredNames = masteredSkills.map(s => (typeof s === 'string' ? s : (s?.skillName || s?.name || "")).toLowerCase());
+  const toLearn = roadmapData.filter(s => {
+    const n = s?.skillName || s?.name || "";
+    return n && !masteredNames.includes(n.toLowerCase());
+  });
+
+  // --- الحل الجذري: فحص إذا كان المستخدم بحاجة للرفع ---
+  const needsUpload = !user?.targetTitle || user?.targetTitle === "Not Set" || user?.targetTitle === "";
+
+  if (isLoadingData) return <div className="h-screen flex items-center justify-center font-black italic text-slate-300">DOROOB SYSTEM...</div>;
 
   return (
-    <div className="bg-[#F8F9FD] min-h-screen pt-24 pb-12 selection:bg-blue-100">
+    <div className="bg-[#F8FAFC] min-h-screen font-sans antialiased pb-20">
       <Navbar />
-      
-      <div className="max-w-[1350px] mx-auto px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="max-w-[1440px] mx-auto pt-28 md:pt-32 px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col lg:flex-row gap-8 items-start text-left">
           
-          {/* Left Column */}
-          <aside className="hidden lg:block lg:col-span-3 sticky top-24 h-fit z-10">
-            <Sidebar user={user} />
+          <aside className="hidden lg:block w-[300px] shrink-0 sticky top-32 h-fit">
+            <LeftSidebar user={user} />
           </aside>
 
-          {/* Middle Column */}
-          <div className="col-span-12 lg:col-span-6 space-y-8">
-            
-            {/* Create Post Bar */}
-            <div className="bg-white border border-slate-100 p-4 rounded-[2.5rem] shadow-sm flex items-center gap-4 transition-all hover:shadow-md">
-              <img className="w-12 h-12 rounded-2xl object-cover ring-4 ring-slate-50" src={user?.profileImageUrl || '/Abood.png'} alt="" />
-              <button 
-                onClick={() => setShowPostModal(true)}
-                className="flex-1 text-left py-3.5 px-6 bg-slate-50 hover:bg-slate-100 rounded-2xl text-slate-400 font-bold text-sm transition-all"
-              >
-                What's on your mind, {user?.fName || 'Abood'}?
-              </button>
-              <button onClick={() => setShowPostModal(true)} className="w-12 h-12 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all flex items-center justify-center">
-                <i className="fa-solid fa-plus text-sm"></i>
-              </button>
-            </div>
-
-            {/* Posts Feed */}
-            <div className="space-y-8">
-              {posts.map(post => (
-                <article key={post.id} className="bg-white border border-slate-100 rounded-[3rem] p-8 shadow-sm hover:shadow-xl hover:shadow-blue-900/5 transition-all duration-500 group">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                      <img className="w-14 h-14 rounded-2xl object-cover border-4 border-slate-50" src="/Abood.png" alt="" />
-                      <div>
-                        <h3 className="text-base font-black text-slate-900 leading-tight">{post.user}</h3>
-                        <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest px-2 py-0.5 bg-blue-50 rounded-lg">Active Now</span>
-                            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{post.date}</span>
-                        </div>
-                      </div>
-                    </div>
+          <main className="flex-1 w-full max-w-[750px] mx-auto space-y-8">
+            <AnimatePresence mode="wait">
+              {needsUpload ? (
+                /* واجهة الرفع الرئيسية - ستظهر لأننا أضفنا فحص "NOT SET" */
+                <motion.section key="setup" initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-[4rem] p-16 border border-slate-100 flex flex-col items-center text-center space-y-10 shadow-2xl relative"
+                >
+                  <div className="absolute top-0 inset-x-0 h-2 bg-indigo-600 rounded-t-full"></div>
+                  <div className="w-24 h-24 bg-indigo-50 text-indigo-600 rounded-[2.5rem] flex items-center justify-center text-4xl shadow-inner font-bold italic">
+                    <i className="fa-solid fa-cloud-arrow-up"></i>
+                  </div>
+                  
+                  <div className="max-w-md">
+                    <h2 className="text-3xl font-black text-slate-900 italic tracking-tighter uppercase mb-4">Start AI Analysis</h2>
+                    <p className="text-slate-500 font-medium leading-relaxed">Please upload your CV to let our AI build your career roadmap.</p>
                   </div>
 
-                  <p className="text-slate-600 text-[16px] leading-relaxed font-semibold mb-6 px-2">{post.text}</p>
-                  
-                  {post.image && (
-                    <div className="rounded-[2.5rem] overflow-hidden border border-slate-50 mb-6">
-                      <img className="w-full h-auto object-cover hover:scale-105 transition-transform duration-700" src={post.image} alt="" />
-                    </div>
-                  )}
+                  <div className="flex flex-col sm:flex-row gap-6 w-full max-w-lg">
+                    <input id="cv-upload-input" type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} />
+                    <label 
+                      htmlFor="cv-upload-input" 
+                      className={`flex-1 p-8 rounded-3xl font-black text-[11px] uppercase tracking-widest cursor-pointer transition-all shadow-2xl flex flex-col items-center gap-3 border-2 ${isUploading ? 'bg-slate-100 border-slate-200 cursor-not-allowed' : 'bg-slate-900 text-white border-transparent hover:bg-slate-800 hover:scale-105'}`}
+                    >
+                      {isUploading ? <div className="w-6 h-6 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div> : <i className="fa-solid fa-file-pdf text-2xl text-rose-500"></i>}
+                      {isUploading ? 'Analyzing...' : 'Upload CV (PDF)'}
+                    </label>
 
-                  <div className="flex items-center justify-between pt-6 border-t border-slate-50 px-2">
-                    <div className="flex gap-4">
-                      <button className={`flex items-center gap-2 px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${post.liked ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-slate-50 text-slate-400 hover:bg-blue-50 hover:text-blue-600'}`}>
-                        <i className="fa-regular fa-heart text-base"></i> {post.likes}
-                      </button>
-                      <button className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-slate-50 text-slate-400 hover:bg-slate-100 font-black text-[10px] uppercase tracking-widest transition-all">
-                        <i className="fa-regular fa-comment text-base"></i> {post.comments}
-                      </button>
-                    </div>
-                    <button className="w-10 h-10 rounded-xl text-slate-300 hover:text-blue-600 transition-colors">
-                        <i className="fa-regular fa-bookmark text-xl"></i>
+                    <button 
+                      onClick={handleAnalyzeCurrentSkills} 
+                      disabled={isUploading || isAnalyzing}
+                      className="flex-1 bg-indigo-600 text-white p-8 rounded-3xl font-black text-[11px] uppercase tracking-widest hover:bg-indigo-700 hover:scale-105 transition-all shadow-2xl flex flex-col items-center gap-3"
+                    >
+                      {isAnalyzing ? <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div> : <i className="fa-solid fa-wand-magic-sparkles text-2xl text-amber-400"></i>}
+                      {isAnalyzing ? 'Scanning...' : 'Use Profile'}
                     </button>
                   </div>
-                </article>
-              ))}
-            </div>
-          </div>
+                </motion.section>
+              ) : (
+                /* لوحة التحكم (Dashboard) - تظهر فقط بعد نجاح التحليل */
+                <motion.div key="dash" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+                  <SkillRadar userSkills={masteredSkills} roadmapData={roadmapData} />
+                  
+                  <section className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm text-left">
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-lg"><i className="fa-solid fa-brain"></i></div>
+                      <div>
+                         <h3 className="font-black text-slate-900 text-lg italic tracking-tighter uppercase">Target: {user.targetTitle}</h3>
+                         <p className="text-indigo-600 text-[10px] font-black uppercase tracking-widest">Next Move Strategy</p>
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 rounded-[2rem] p-8 border border-slate-100">
+                      <p className="text-[13px] text-slate-600 font-bold italic leading-relaxed">"{user.aiRecommendation}"</p>
+                    </div>
+                  </section>
 
-          {/* Right Column */}
-          <aside className="hidden lg:block lg:col-span-3 sticky top-24 h-fit z-10">
+                  {/* Skill Hub */}
+                  <section className="bg-white rounded-[3rem] border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                      <h3 className="font-black text-slate-900 text-xs uppercase italic tracking-tighter">Skill Hub</h3>
+                      <div className="flex bg-white p-1 rounded-xl shadow-inner gap-1">
+                        {['to-learn', 'mastered'].map(tab => (
+                          <button key={tab} onClick={() => setActiveTab(tab)}
+                            className={`px-5 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${activeTab === tab ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400'}`}
+                          >
+                            {tab === 'to-learn' ? `Roadmap` : `My Stack`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="p-6 h-[400px] overflow-y-auto bg-white text-left">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {(activeTab === 'to-learn' ? toLearn : masteredSkills).map((skill, i) => {
+                          const name = typeof skill === 'string' ? skill : (skill?.skillName || skill?.name || "Skill");
+                          return (
+                            <div key={i} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl group transition-all">
+                              <div className="flex items-center gap-4">
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs ${activeTab === 'to-learn' ? 'bg-white text-indigo-600 border border-indigo-100' : 'bg-emerald-500 text-white'}`}>
+                                  <i className={`fa-solid ${activeTab === 'to-learn' ? 'fa-rocket' : 'fa-check'}`}></i>
+                                </div>
+                                <span className="font-black text-slate-900 text-[13px] uppercase italic">{name}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </section>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </main>
+
+          <aside className="hidden xl:block w-[320px] shrink-0 sticky top-32 h-fit">
             <RightPanel />
           </aside>
-
         </div>
       </div>
-
-      {/* Post Modal */}
-      {showPostModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-xl rounded-[3.5rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300">
-            <div className="px-10 py-8 border-b border-slate-50 flex justify-between items-center">
-              <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Create Post</h2>
-              <button onClick={() => setShowPostModal(false)} className="text-slate-300 hover:text-rose-500 transition-all">
-                <i className="fa-solid fa-circle-xmark text-3xl"></i>
-              </button>
-            </div>
-            <form onSubmit={handlePost} className="p-10 space-y-6">
-              <textarea
-                placeholder="What's happening?"
-                value={postText}
-                onChange={e => setPostText(e.target.value)}
-                className="w-full h-32 text-xl font-bold border-none focus:ring-0 resize-none outline-none placeholder-slate-200 text-slate-800"
-              />
-              <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-[1.8rem] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-blue-100 transition-all active:scale-95">
-                Broadcast Post
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-     </div>
+    </div>
   );
 }

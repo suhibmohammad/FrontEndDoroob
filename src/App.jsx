@@ -15,26 +15,38 @@ import ForgotPassword from './pages/ForgotPassword';
 import PasswordVerification from './pages/PasswordVerification';
 import ResetPassword from './pages/ResetPassword';
 import EmailVerification from './pages/EmailVerification';
+import ProtectedRoute from './components/ProtectedRoute';
+import ProfileSkeleton from './components/ProfileSkeleton';
+import HomeSkeleton from './components/HomeSkeleton';
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignUpPage />} />
         <Route path="/" element={<LandingPage />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/email-verification" element={<EmailVerification />} />
+        <Route path="/password-verification" element={<PasswordVerification />} />
+
+<Route element={<ProtectedRoute loadingComponent={<ProfileSkeleton />} />}>
+          <Route path="/profile" element={<ProfilePage />} />
+        </Route>
+<Route element={<ProtectedRoute loadingComponent={<HomeSkeleton />} />}>
         <Route path="/home" element={<HomePage />} />
+        </Route>
+
+        <Route element={<ProtectedRoute/>}>
         <Route path="/jobs" element={<JobsPage />} />
         <Route path="/applications" element={<MyApplicationsPage />} />
         <Route path="/saved" element={<SavedJobsPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/password-verification" element={<PasswordVerification />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/email-verification" element={<EmailVerification />} />
-        <Route path="/job/:id" element={<JobApplicationPage />} />
+         <Route path="/job/:id" element={<JobApplicationPage />} />
         <Route path="/review-application/:id" element={<ReviewApplicationPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignUpPage />} />
+
         <Route path="/create-company" element={<CreateCompanyPage />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );

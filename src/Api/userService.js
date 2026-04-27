@@ -13,6 +13,8 @@ export const getUserProfile = async () => {
                     'Authorization': `Bearer ${token}`
                 }
             });
+            console.log(response);
+            
             return response.data;
     }
     catch (error) {
@@ -33,4 +35,19 @@ export const updateUserProfile = async (formData) => {
         console.error("Error updating user profile:", error);
         throw error.response ? error.response.data : new Error("Error updating user profile");
     }
+};
+
+export const updateUserInfo = async (userData) => {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await Api.put(`${API_URL}/user`, userData, {
+            headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error updating user info:", error);
+        throw error.response ? error.response.data : new Error("Error updating user info");
+    }   
 };

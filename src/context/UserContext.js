@@ -9,20 +9,23 @@ export const UserProvider = ({ children }) => {
   const [loading, setLoading] = useState(true); // 3. يفضل تبدأ بـ true لتجنب الـ Flicker
 
   const fetchUser = async () => {
-    const token = localStorage.getItem("token");
-    
-    if (token) {
-      try {
-        const data = await getUserProfile();
-        setUser(data);
-      } catch (error) {
-        console.error("فشل في جلب بيانات المستخدم:", error);
-        logout();
-      }
-    }
-    setLoading(false); // خاوة لازم تتنفذ عشان تظهر الشاشة
-  };
+  const token = localStorage.getItem("token");
 
+  if (token) {
+    try {
+      const data = await getUserProfile();
+
+      console.log("🔥 fetchUser result:", data);
+      console.log("🔥 skills from backend:", data.skills);
+
+      setUser(data);
+    } catch (error) {
+      console.error("❌ fetchUser error:", error);
+      logout();
+    }
+  }
+  setLoading(false);
+};
   useEffect(() => {
     fetchUser();
   }, []);
