@@ -18,6 +18,7 @@ import EmailVerification from './pages/EmailVerification';
 import ProtectedRoute from './components/ProtectedRoute';
 import ProfileSkeleton from './components/ProfileSkeleton';
 import HomeSkeleton from './components/HomeSkeleton';
+import CompanyDashboard from './pages/CompanyDashboard';
 
 export default function App() {
   return (
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="/review-application/:id" element={<ReviewApplicationPage />} />
 
         <Route path="/create-company" element={<CreateCompanyPage />} />
+        <Route path="/company-dashboard" element={<CompanyDashboard />} />
         </Route>
       </Routes>
     </BrowserRouter>

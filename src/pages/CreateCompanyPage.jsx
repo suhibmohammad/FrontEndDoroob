@@ -1,151 +1,240 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { createCompany, uploadImageCompany } from '../Api/companyService';
+import Navbar from '../components/Navbar';
 
 export default function CreateCompanyPage() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', email: '', description: '' });
-  const [errors, setErrors] = useState({});
-  const [coverPreview, setCoverPreview] = useState(null);
+  
+  // State الحقول الأساسية
+  const [form, setForm] = useState({ 
+    name: '', 
+    email: '', 
+    location: '', 
+    description: '' 
+  });
+
+  // State الصور والتحميل
+  const [logoFile, setLogoFile] = useState(null); 
   const [logoPreview, setLogoPreview] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  // منطق التحقق من البيانات
   const validate = () => {
     const e = {};
     if (!form.name.trim()) e.name = 'Company name is required';
-    if (!form.email.trim()) e.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = 'Invalid email';
+    if (!form.email.trim()) e.email = 'Official email is required';
+    else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = 'Invalid email format';
+    if (!form.location.trim()) e.location = 'Location is required';
     if (!form.description.trim()) e.description = 'Description is required';
+    else if (form.description.length < 20) e.description = 'Description must be at least 20 characters';
     return e;
   };
 
-  const handleSubmit = (e) => {
+  // معالجة إرسال الفورم (التسلسل الجديد)
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const e2 = validate();
-    if (Object.keys(e2).length > 0) { setErrors(e2); return; }
-    setSubmitted(true);
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // المرحلة 1: إنشاء الشركة (JSON)
+            console.log("noany");
+
+      const companyResponse = await createCompany(form);
+      console.log("success");
+      
+      // الحصول على الـ ID من الرد (تأكد من مسمى الحقل في الـ Backend)
+      const companyId = companyResponse.id || companyResponse.Id;
+    console.log(companyId);
+    
+      if (!companyId) throw new Error("Company ID not returned from server");
+      // المرحلة 2: رفع الصورة إذا تم اختيارها
+      if (logoFile && companyId) {
+        await uploadImageCompany(companyId, logoFile);
+      }
+
+      setSubmitted(true);
+    } catch (err) {
+      console.error("Process Error:", err);
+      alert(err.message || "Failed to create company. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleImageUpload = (e, setPreview) => {
+  // معالجة اختيار الصورة
+  const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      setLogoFile(file);
       const reader = new FileReader();
-      reader.onload = ev => setPreview(ev.target.result);
+      reader.onload = ev => setLogoPreview(ev.target.result);
       reader.readAsDataURL(file);
     }
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen p-6 md:p-12">
-      <div className="max-w-5xl mx-auto">
-
-        <div className="mb-8 border-b border-gray-200 pb-4 flex justify-between items-end">
+    <div className="bg-[#F8FAFC] min-h-screen font-sans antialiased">
+      <Navbar />
+      
+      <div className="max-w-5xl mx-auto pt-32 pb-20 px-6">
+        
+        {/* Header */}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }} 
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-12 text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-6"
+        >
           <div>
-            <h1 className="text-3xl font-bold text-blue-800">Register Your Company</h1>
-            <p className="text-gray-500 italic">Doroop - Professional Networking Platform</p>
+            <h1 className="text-5xl font-black text-slate-900 italic uppercase tracking-tighter">
+              Register <span className="text-indigo-600">Company</span>
+            </h1>
+            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.3em] mt-2">
+              Doroop Business Portal
+            </p>
           </div>
-          <img src="/5.png" alt="Logo" className="h-14" />
-        </div>
+          <img src="/5.png" alt="Doroop" className="h-16 drop-shadow-xl" />
+        </motion.div>
 
-        {submitted ? (
-          <div className="bg-green-50 border border-green-200 rounded-2xl p-10 text-center">
-            <i className="fa-solid fa-check-circle text-green-500 text-6xl mb-4"></i>
-            <h2 className="text-2xl font-bold text-green-800 mb-2">Company Created Successfully!</h2>
-            <p className="text-green-600 mb-6">Your company profile is now live on Doroop.</p>
-            <button onClick={() => navigate('/home')} className="bg-blue-800 text-white font-bold py-3 px-10 rounded-2xl hover:bg-blue-700 transition">
-              Go to Home
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
-
-            {/* Left: General Info */}
-            <div className="space-y-6 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-              <h2 className="text-xl font-semibold text-gray-800 border-l-4 border-blue-800 pl-3">General Info</h2>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
-                <input type="text" placeholder="e.g. Doroop Software"
-                  value={form.name}
-                  onChange={e => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-800 focus:border-blue-800 outline-none transition-all" />
-                {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+        <AnimatePresence mode="wait">
+          {submitted ? (
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white border-2 border-indigo-50 rounded-[4rem] p-16 text-center shadow-2xl shadow-indigo-100"
+            >
+              <div className="w-24 h-24 bg-green-500 text-white rounded-[2rem] flex items-center justify-center text-4xl mx-auto mb-8 shadow-lg shadow-green-100">
+                <i className="fa-solid fa-check"></i>
               </div>
+              <h2 className="text-3xl font-black text-slate-900 uppercase italic tracking-tighter mb-4">Success!</h2>
+              <p className="text-slate-500 font-medium mb-10 max-w-md mx-auto leading-relaxed">
+                Your company profile has been created and branded successfully.
+              </p>
+              <button 
+                onClick={() => navigate('/home')} 
+                className="bg-slate-900 text-white font-black uppercase text-[10px] tracking-[0.2em] py-5 px-12 rounded-[2rem] hover:bg-indigo-600 transition-all shadow-xl active:scale-95"
+              >
+                Go to Dashboard
+              </button>
+            </motion.div>
+          ) : (
+            <motion.form 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              onSubmit={handleSubmit} 
+              className="grid grid-cols-1 lg:grid-cols-12 gap-8"
+            >
+              {/* القسم الأيسر: المعلومات */}
+              <div className="lg:col-span-7 space-y-6 bg-white p-10 md:p-14 rounded-[3.5rem] shadow-sm border border-slate-100">
+                <h2 className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.3em] mb-8 block">01. Company Identity</h2>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Official Email</label>
-                <input type="email" placeholder="hr@doroop.com"
-                  value={form.email}
-                  onChange={e => setForm({ ...form, email: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-800 focus:border-blue-800 outline-none transition-all" />
-                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-              </div>
+                <div className="space-y-8">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-2 block">Company Legal Name</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. TechNova"
+                      value={form.name}
+                      onChange={e => setForm({ ...form, name: e.target.value })}
+                      className={`w-full px-8 py-5 rounded-[2rem] bg-slate-50 border-2 transition-all outline-none font-bold text-slate-700 ${errors.name ? 'border-rose-400 ring-4 ring-rose-50' : 'border-transparent focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-50/50'}`}
+                    />
+                    {errors.name && <p className="text-rose-500 text-[10px] font-black uppercase mt-2 ml-4">{errors.name}</p>}
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea rows="6" placeholder="Describe your company mission..."
-                  value={form.description}
-                  onChange={e => setForm({ ...form, description: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-800 focus:border-blue-800 outline-none transition-all" />
-                {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description}</p>}
-              </div>
-            </div>
-
-            {/* Right: Images + Submit */}
-            <div className="space-y-6">
-
-              {/* Cover Image */}
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <h2 className="font-semibold text-gray-800 border-l-4 border-blue-800 pl-3 mb-4 text-lg">Cover Image</h2>
-                <div className="relative group h-44 w-full bg-blue-50 rounded-xl border-2 border-dashed border-blue-200 flex items-center justify-center overflow-hidden hover:border-blue-800 transition-all cursor-pointer">
-                  {coverPreview ? (
-                    <img src={coverPreview} alt="Cover" className="absolute inset-0 w-full h-full object-cover" />
-                  ) : (
-                    <div className="text-center group-hover:scale-110 transition-transform">
-                      <i className="fas fa-cloud-upload-alt text-blue-400 text-3xl mb-2"></i>
-                      <p className="text-xs text-blue-800 font-semibold uppercase tracking-wider">Upload Cover</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-2 block">Official Email</label>
+                      <input 
+                        type="email" 
+                        value={form.email}
+                        onChange={e => setForm({ ...form, email: e.target.value })}
+                        className="w-full px-8 py-5 rounded-[2rem] bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white outline-none font-bold text-slate-700"
+                      />
                     </div>
-                  )}
-                  <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer"
-                    onChange={e => handleImageUpload(e, setCoverPreview)} />
-                </div>
-              </div>
-
-              {/* Logo */}
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <h2 className="font-semibold text-gray-800 border-l-4 border-blue-800 pl-3 mb-4 text-lg">Profile Logo</h2>
-                <div className="flex items-center space-x-6">
-                  <div className="h-28 w-28 bg-blue-50 rounded-full border-2 border-dashed border-blue-200 flex items-center justify-center relative group overflow-hidden shrink-0">
-                    {logoPreview ? (
-                      <img src={logoPreview} alt="Logo" className="absolute inset-0 w-full h-full object-cover rounded-full" />
-                    ) : (
-                      <i className="fas fa-camera text-blue-300 text-2xl group-hover:text-blue-800 transition-colors"></i>
-                    )}
-                    <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer"
-                      onChange={e => handleImageUpload(e, setLogoPreview)} />
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-2 block">Headquarters</label>
+                      <input 
+                        type="text" 
+                        value={form.location}
+                        onChange={e => setForm({ ...form, location: e.target.value })}
+                        className="w-full px-8 py-5 rounded-[2rem] bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white outline-none font-bold text-slate-700"
+                      />
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-bold text-gray-700">Company Logo</p>
-                    <p className="text-xs text-gray-500 leading-relaxed mt-1">Recommended size: 512x512px.<br />Supports PNG, JPG or WEBP.</p>
+
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-2 block">Company Vision</label>
+                    <textarea 
+                      rows="5" 
+                      value={form.description}
+                      onChange={e => setForm({ ...form, description: e.target.value })}
+                      className="w-full px-8 py-6 rounded-[2.5rem] bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white outline-none font-bold text-slate-700 resize-none"
+                    />
+                    {errors.description && <p className="text-rose-500 text-[10px] font-black uppercase mt-2 ml-4">{errors.description}</p>}
                   </div>
                 </div>
               </div>
 
-              {/* Buttons */}
-              <div className="flex gap-4 pt-4">
-                <button type="submit"
-                  className="flex-1 bg-blue-800 hover:bg-blue-900 text-white font-bold py-4 px-6 rounded-2xl shadow-lg transition-all transform active:scale-95 flex items-center justify-center gap-2">
-                  <i className="fas fa-check-circle"></i> Create Company
-                </button>
-                <button type="button" onClick={() => navigate('/home')}
-                  className="px-8 py-4 border border-gray-300 rounded-2xl text-gray-600 font-medium hover:bg-gray-100 transition-all">
-                  Cancel
-                </button>
+              {/* القسم الأيمن: الصورة والرفع */}
+              <div className="lg:col-span-5 space-y-8">
+                <div className="bg-white p-10 rounded-[3.5rem] shadow-sm border border-slate-100 relative overflow-hidden group">
+                  <h2 className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.3em] mb-10 block relative z-10">02. Visual Branding</h2>
+                  
+                  <div className="flex flex-col items-center">
+                    <div className="w-40 h-40 bg-slate-50 rounded-[3rem] border-4 border-dashed border-slate-100 flex items-center justify-center relative group/upload overflow-hidden transition-all hover:border-indigo-400">
+                      {logoPreview ? (
+                        <img src={logoPreview} alt="Preview" className="absolute inset-0 w-full h-full object-cover p-2" />
+                      ) : (
+                        <div className="text-center p-4">
+                          <i className="fa-solid fa-cloud-arrow-up text-3xl text-slate-200 group-hover/upload:text-indigo-400 transition-colors"></i>
+                          <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mt-2">Upload Logo</p>
+                        </div>
+                      )}
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="absolute inset-0 opacity-0 cursor-pointer z-20"
+                        onChange={handleImageChange} 
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-900 rounded-[3.5rem] p-10 text-white shadow-2xl relative overflow-hidden">
+                  <h3 className="text-2xl font-black italic uppercase tracking-tighter mb-8 leading-tight">Join the <br/> ecosystem</h3>
+                  
+                  <div className="flex flex-col gap-4 relative z-10">
+                    <button 
+                      type="submit"
+                      disabled={loading}
+                      className={`w-full py-5 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] transition-all transform active:scale-95 flex items-center justify-center gap-3 ${
+                        loading ? 'bg-slate-700' : 'bg-indigo-600 hover:bg-white hover:text-slate-900 shadow-xl shadow-indigo-500/20'
+                      }`}
+                    >
+                      {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : 'Launch Company'}
+                    </button>
+                    
+                    <button 
+                      type="button" 
+                      onClick={() => navigate('/home')}
+                      className="w-full py-5 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 hover:text-white"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-
-          </form>
-        )}
-
+            </motion.form>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

@@ -1,23 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '../components/Navbar';
 import LeftSidebar from '../components/LeftSidebar';
 import RightPanel from '../components/RightPanel';
 import JobCard from '../components/JobCard';
-import Footer from '../components/Footer';
 import { useJobs } from '../context/JobContext';
 import { useUser } from '../context/UserContext';
 
 export default function JobsPage() {
   const { user } = useUser();
-  const { jobs, loading, error, fetchJobs, fetchJobsBySkill, savedJobIds, toggleSaveJob } = useJobs();
+  const { jobs, loading, fetchJobs, fetchJobsBySkill, savedJobIds, toggleSaveJob } = useJobs();
   
   const [search, setSearch] = useState('');
-  const [jobTypes, setJobTypes] = useState([]); // [FullTime, PartTime, Remote]
-  const [experience, setExperience] = useState(''); // fresh, junior, mid, senior
+  const [jobTypes, setJobTypes] = useState([]); 
+  const [experience, setExperience] = useState(''); 
   const [currentPage, setCurrentPage] = useState(1);
   const [isSkillSearch, setIsSkillSearch] = useState(false);
   const jobsPerPage = 4;
+
+  // --- التأثير الأساسي: جلب الوظائف بناءً على مهارات المستخدم عند فتح الصفحة ---
+  useEffect(() => {
+    const loadInitialJobs = async () => {
+      // إذا كان المستخدم يمتلك مهارات في ملفه الشخصي
+      if (user?.skills && user.skills.length > 0) {
+        setIsSkillSearch(true);
+        // نأخذ أول مهارة (أو دمج مهارات) للبحث الأولي
+        const primarySkill = user.skills[0].skillName;
+        setSearch(primarySkill); 
+        await fetchJobsBySkill(primarySkill, 1, 50);
+      } else {
+        // إذا لم توجد مهارات، نعرض كل الوظائف المتاحة
+        setIsSkillSearch(false);
+        await fetchJobs();
+      }
+    };
+
+    loadInitialJobs();
+  }, [user, fetchJobs, fetchJobsBySkill]);
 
   // --- Handlers ---
   const handleSearch = async () => {
@@ -41,7 +60,6 @@ export default function JobsPage() {
   };
 
   const toggleJobType = (type) => {
-    // شلنا الفراغ عشان يطابق داتا الـ API (مثلاً Full Time تصير FullTime)
     const formattedType = type.replace(/\s+/g, ''); 
     setJobTypes(prev =>
       prev.includes(formattedType) ? prev.filter(t => t !== formattedType) : [...prev, formattedType]
@@ -49,17 +67,13 @@ export default function JobsPage() {
     setCurrentPage(1);
   };
 
-  // --- 🔥 الفلترة الذكية (Filtering Logic) ---
+  // --- Filtering Logic ---
   const filteredJobs = jobs.filter(job => {
-    // 1. فلترة نوع العمل (FullTime / PartTime / Remote)
     const matchType = jobTypes.length === 0 || jobTypes.some(t => {
       const jobTypeData = (job.type || job.jobType || "").replace(/\s+/g, '').toLowerCase();
       return jobTypeData.includes(t.toLowerCase());
     });
-
-    // 2. فلترة مستوى الخبرة (Junior / Mid / Senior)
     const matchExp = !experience || (job.experience || "").toLowerCase().includes(experience.toLowerCase());
-
     return matchType && matchExp;
   });
 
@@ -67,30 +81,41 @@ export default function JobsPage() {
   const paginatedJobs = filteredJobs.slice((currentPage - 1) * jobsPerPage, currentPage * jobsPerPage);
 
   return (
-    <div className="bg-[#F3F7FA] min-h-screen font-sans antialiased selection:bg-blue-100">
+    <div className="bg-[#F8FAFC] min-h-screen font-sans antialiased pb-20">
       <Navbar />
 
-      <div className="max-w-[1400px] mx-auto pt-24 md:pt-28 px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col lg:flex-row gap-6">
+      <div className="max-w-[1440px] mx-auto pt-28 md:pt-32 px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col lg:flex-row gap-8 items-start text-left">
           
-          <aside className="hidden lg:block w-[300px] shrink-0 sticky top-24 h-fit">
+          {/* الجانب الأيسر: Sidebar */}
+          <aside className="hidden lg:block w-[300px] shrink-0 sticky top-32 h-fit">
             <LeftSidebar user={user} />
           </aside>
 
-          <main className="flex-1 min-w-0 space-y-6 pb-20">
+          {/* المنتصف: القائمة الرئيسية */}
+          <main className="flex-1 w-full max-w-[750px] mx-auto space-y-8">
             
+            {/* الهيدر العلوي الذكي */}
             <div className="flex items-center justify-between px-2">
               <div>
-                <h1 className="text-2xl md:text-3xl font-black text-[#1E293B]">Explore Jobs 🚀</h1>
-                <p className="text-slate-500 text-sm font-medium mt-1">Find your next career move</p>
+                <h1 className="text-3xl font-black text-slate-900 italic uppercase tracking-tighter">
+                  {isSkillSearch ? "Recommended for you 🎯" : "Explore Jobs 🚀"}
+                </h1>
+                <p className="text-slate-500 text-sm font-medium mt-1">
+                  {isSkillSearch 
+                    ? `Showing positions matching: ${search}` 
+                    : "Find your next AI-matched career move"}
+                </p>
               </div>
-              <div className="hidden sm:block bg-white px-4 py-2 rounded-2xl shadow-sm border border-slate-100 font-black text-[11px] text-blue-600 uppercase">
+              <div className="hidden sm:block bg-indigo-600 text-white px-5 py-2 rounded-2xl shadow-lg font-black text-[10px] uppercase tracking-widest">
                 {filteredJobs.length} Positions Found
               </div>
             </div>
 
-            {/* Filter Panel */}
-            <section className="bg-white rounded-[2rem] p-4 md:p-8 shadow-sm border border-slate-100 transition-all">
+            {/* لوحة البحث والفلاتر */}
+            <section className="bg-white rounded-[3rem] p-8 shadow-sm border border-slate-100 relative overflow-hidden">
+              <div className="absolute right-0 top-0 w-32 h-32 bg-indigo-50/40 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+              
               <div className="relative mb-8">
                 <input
                   type="text"
@@ -98,18 +123,19 @@ export default function JobsPage() {
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                  className="w-full pl-12 pr-32 py-5 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 outline-none shadow-inner"
+                  className="w-full pl-14 pr-36 py-5 rounded-[2rem] bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700 outline-none shadow-inner transition-all"
                 />
-                <i className="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-2">
-                  <button onClick={handleSearch} className="bg-[#0F172A] text-white px-6 py-3 rounded-xl font-bold text-xs hover:bg-blue-600 transition-all shadow-lg shadow-slate-200">Search</button>
+                <i className="fa-solid fa-magnifying-glass absolute left-6 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                  <button onClick={handleSearch} className="bg-slate-900 text-white px-8 py-3.5 rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-xl active:scale-95">
+                    Search
+                  </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-slate-50">
-                {/* Job Type Filter */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pt-6 border-t border-slate-50">
                 <div>
-                  <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest block mb-4">Employment Type</span>
+                  <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] block mb-4">Employment Type</span>
                   <div className="flex flex-wrap gap-2">
                     {['Full Time', 'Part Time', 'Remote'].map(type => {
                       const formatted = type.replace(/\s+/g, '');
@@ -118,10 +144,10 @@ export default function JobsPage() {
                         <button
                           key={type}
                           onClick={() => toggleJobType(type)}
-                          className={`px-5 py-2.5 rounded-xl text-[11px] font-bold transition-all border ${
+                          className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-tighter transition-all border-2 ${
                             isActive 
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-100 scale-105' 
-                            : 'bg-white text-slate-500 border-slate-100 hover:border-blue-200 hover:text-blue-600'
+                            ? 'bg-slate-900 text-white border-slate-900 shadow-lg scale-105' 
+                            : 'bg-white text-slate-400 border-slate-100 hover:border-indigo-200 hover:text-indigo-600'
                           }`}
                         >
                           {type}
@@ -131,13 +157,12 @@ export default function JobsPage() {
                   </div>
                 </div>
 
-                {/* Experience Level Filter */}
                 <div>
-                  <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest block mb-4">Experience Level</span>
+                  <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] block mb-4">Experience Level</span>
                   <select 
                     value={experience}
                     onChange={(e) => { setExperience(e.target.value); setCurrentPage(1); }}
-                    className="w-full bg-slate-50 border-none rounded-xl p-4 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-sm"
+                    className="w-full bg-slate-50 border-none rounded-2xl p-4 text-[11px] font-black text-slate-600 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-inner appearance-none uppercase tracking-widest"
                   >
                     <option value="">All Experience Levels</option>
                     <option value="fresh">Fresh / Entry Level</option>
@@ -149,32 +174,33 @@ export default function JobsPage() {
               </div>
 
               {isSkillSearch && (
-                <div className="mt-4 flex justify-end">
-                  <button onClick={handleClearSearch} className="text-[10px] font-black text-red-400 uppercase hover:text-red-600 transition-colors">
-                    Reset All Filters ×
+                <div className="mt-6 flex justify-end">
+                  <button onClick={handleClearSearch} className="text-[10px] font-black text-rose-500 uppercase tracking-widest hover:text-rose-700 transition-colors flex items-center gap-2">
+                    <i className="fa-solid fa-circle-xmark"></i> Clear Personalization
                   </button>
                 </div>
               )}
             </section>
 
-            {/* Job List */}
+            {/* قائمة الوظائف */}
             <div className="grid gap-6">
               {loading ? (
-                <div className="py-20 text-center space-y-4">
-                  <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                  <p className="text-slate-400 font-bold text-sm">Searching for matches...</p>
+                <div className="py-24 text-center space-y-4 bg-white rounded-[3rem] border border-slate-100">
+                  <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                  <p className="text-slate-400 font-black uppercase text-[10px] tracking-[0.3em] italic">Scanning Opportunities...</p>
                 </div>
               ) : (
                 <AnimatePresence mode='popLayout'>
                   {paginatedJobs.length > 0 ? (
                     paginatedJobs.map(job => (
-                      <motion.div key={job.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}>
+                      <motion.div key={job.id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}>
                         <JobCard job={job} savedJobs={savedJobIds} onSave={() => toggleSaveJob(job)} />
                       </motion.div>
                     ))
                   ) : (
-                    <div className="py-20 text-center bg-white rounded-[2rem] border-2 border-dashed border-slate-200 text-slate-400 font-bold">
-                      No jobs found matching these filters.
+                    <div className="py-20 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-200 text-slate-400 font-bold italic">
+                      <i className="fa-solid fa-ghost text-4xl mb-4 block opacity-20"></i>
+                      No matches found for "{search}".
                     </div>
                   )}
                 </AnimatePresence>
@@ -183,7 +209,7 @@ export default function JobsPage() {
 
             {/* Pagination */}
             {!loading && totalPages > 1 && (
-              <div className="flex justify-center gap-2 pt-8">
+              <div className="flex justify-center gap-3 pt-4">
                 {[...Array(totalPages)].map((_, i) => (
                   <button
                     key={i}
@@ -191,10 +217,10 @@ export default function JobsPage() {
                       setCurrentPage(i + 1);
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className={`w-10 h-10 rounded-xl font-bold text-xs transition-all ${
+                    className={`w-12 h-12 rounded-2xl font-black text-xs transition-all shadow-sm ${
                       currentPage === i + 1 
-                      ? 'bg-[#0F172A] text-white shadow-lg' 
-                      : 'bg-white text-slate-400 border border-slate-100 hover:bg-slate-50 shadow-sm'
+                      ? 'bg-slate-900 text-white shadow-indigo-100 shadow-xl scale-110' 
+                      : 'bg-white text-slate-400 border border-slate-100 hover:bg-slate-50'
                     }`}
                   >
                     {i + 1}
@@ -204,15 +230,18 @@ export default function JobsPage() {
             )}
           </main>
 
-          <aside className="hidden xl:block w-[320px] shrink-0 sticky top-24 h-fit space-y-6">
+          {/* الجانب الأيمن */}
+          <aside className="hidden xl:block w-[320px] shrink-0 sticky top-32 h-fit space-y-8">
             <RightPanel />
-            <div className="bg-blue-600 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-xl shadow-blue-200">
-               <h4 className="font-black text-xl mb-2 italic">Hiring?</h4>
-               <p className="text-blue-100 text-xs mb-6 font-medium leading-relaxed">Connect with the best talent in the region now.</p>
-               <button className="w-full bg-white text-blue-600 py-4 rounded-2xl font-black text-xs hover:bg-[#0F172A] hover:text-white transition-all transform active:scale-95 shadow-lg">Post a Job +</button>
+            <div className="bg-indigo-600 rounded-[3rem] p-10 text-white relative overflow-hidden shadow-2xl shadow-indigo-100 group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700"></div>
+                <h4 className="font-black text-2xl mb-3 italic tracking-tighter">Hiring?</h4>
+                <p className="text-indigo-100 text-xs mb-8 font-bold leading-relaxed uppercase tracking-wider">Connect with the top 1% of tech talent instantly.</p>
+                <button className="w-full bg-white text-indigo-600 py-4 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-900 hover:text-white transition-all transform active:scale-95 shadow-xl">
+                  Post a Job +
+                </button>
             </div>
-           </aside>
-
+          </aside>
         </div>
       </div>
     </div>

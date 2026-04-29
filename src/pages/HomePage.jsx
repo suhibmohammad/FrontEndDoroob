@@ -8,12 +8,16 @@ import Navbar from '../components/Navbar';
 import LeftSidebar from '../components/LeftSidebar';
 import RightPanel from '../components/RightPanel';
 import { useUser } from '../context/UserContext';
+import RoadmapModal from '../components/RoadmapModal';
 
 // مكوّن الرادار البصري
-const SkillRadar = ({ userSkills, roadmapData }) => {
+const SkillRadar = ({ userSkills, missingSkills }) => {
+  // تحويل المهارات الحالية لأسماء lowercase للمقارنة
   const masteredNames = userSkills.map(s => (typeof s === 'string' ? s : (s?.skillName || s?.name || "")).toLowerCase());
-  const data = (roadmapData || []).slice(0, 6).map(skill => {
-    const name = skill.name || skill.skillName || "Skill";
+  
+  // دمج المهارات الموجودة والناقصة لعرضها في الرادار
+  const data = (missingSkills || []).slice(0, 6).map(skill => {
+    const name = skill.skillName || "Skill";
     const isMastered = masteredNames.includes(name.toLowerCase());
     return { subject: name, score: isMastered ? 100 : 30, fullMark: 100 };
   });
@@ -28,7 +32,7 @@ const SkillRadar = ({ userSkills, roadmapData }) => {
         <p className="text-indigo-400 text-[10px] font-black uppercase tracking-[0.3em] mb-6">Live AI Diagnostics</p>
         <div className="h-[280px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data.length > 0 ? data : [{subject: 'No Data', score: 0}]} >
+            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data.length > 0 ? data : [{subject: 'Analysis Ready', score: 0}]} >
               <PolarGrid stroke="#1e293b" />
               <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} />
               <RadarArea name="Skills" dataKey="score" stroke="#6366f1" fill="#6366f1" fillOpacity={0.5} />
@@ -46,6 +50,7 @@ export default function HomePage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -69,13 +74,14 @@ export default function HomePage() {
     const token = localStorage.getItem('token');
     setIsUploading(true);
     try {
-      await axios.post(`http://doroob.runasp.net/api/Resume/upload-resume/${user.id}`, formData, {
+      const updated = await axios.post(`http://doroob.runasp.net/api/Resume/upload-resume/${user.id}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data', 'Authorization': `Bearer ${token}` }
       });
-      const updated = await axios.post(`http://doroob.runasp.net/api/Dashboard/analyze-profile/${user.id}`, {}, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (updated.status === 200) setUser(prev => ({ ...prev, ...updated.data }));
+      if (updated.status === 200) {
+        // تحديث البيانات فوراً بعد الرفع
+        setUser(prev => ({ ...prev, ...updated.data }));
+        window.location.reload(); // إعادة تحميل بسيطة لضمان تحديث الـ JSON Parse
+      }
     } catch (e) { alert("Error analyzing PDF."); } finally { setIsUploading(false); }
   };
 
@@ -90,22 +96,38 @@ export default function HomePage() {
     } catch (e) { alert("AI Analysis failed."); } finally { setIsAnalyzing(false); }
   };
 
-  const roadmapData = user?.roadmapData ? JSON.parse(user.roadmapData) : [];
+  // --- 🛡️ معالجة هيكلية الـ JSON الجديدة 🛡️ ---
+  const rawRoadmap = user?.roadmapData ? JSON.parse(user.roadmapData) : null;
+  const missingSkills = rawRoadmap?.missingSkills || [];
+  const coursesData = rawRoadmap?.courses || [];
+  
   const masteredSkills = user?.skills || [];
   const masteredNames = masteredSkills.map(s => (typeof s === 'string' ? s : (s?.skillName || s?.name || "")).toLowerCase());
-  const toLearn = roadmapData.filter(s => {
-    const n = s?.skillName || s?.name || "";
+
+  // تصفية المهارات التي لم يتم إتقانها بعد من الـ missingSkills
+  const toLearn = missingSkills.filter(s => {
+    const n = s?.skillName || "";
     return n && !masteredNames.includes(n.toLowerCase());
   });
 
-  // --- الحل الجذري: فحص إذا كان المستخدم بحاجة للرفع ---
   const needsUpload = !user?.targetTitle || user?.targetTitle === "Not Set" || user?.targetTitle === "";
 
-  if (isLoadingData) return <div className="h-screen flex items-center justify-center font-black italic text-slate-300">DOROOB SYSTEM...</div>;
+  if (isLoadingData) return <div className="h-screen flex items-center justify-center font-black italic text-slate-300 animate-pulse">DOROOB SYSTEM...</div>;
 
   return (
     <div className="bg-[#F8FAFC] min-h-screen font-sans antialiased pb-20">
       <Navbar />
+      
+      <AnimatePresence>
+        {isModalOpen && (
+          <RoadmapModal
+            data={coursesData} // نمرر مصفوفة الكورسات فقط للمودال
+            userSkills={masteredSkills} 
+            onClose={() => setIsModalOpen(false)} 
+          />
+        )}
+      </AnimatePresence>
+
       <div className="max-w-[1440px] mx-auto pt-28 md:pt-32 px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col lg:flex-row gap-8 items-start text-left">
           
@@ -116,7 +138,6 @@ export default function HomePage() {
           <main className="flex-1 w-full max-w-[750px] mx-auto space-y-8">
             <AnimatePresence mode="wait">
               {needsUpload ? (
-                /* واجهة الرفع الرئيسية - ستظهر لأننا أضفنا فحص "NOT SET" */
                 <motion.section key="setup" initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
                   className="bg-white rounded-[4rem] p-16 border border-slate-100 flex flex-col items-center text-center space-y-10 shadow-2xl relative"
                 >
@@ -127,7 +148,7 @@ export default function HomePage() {
                   
                   <div className="max-w-md">
                     <h2 className="text-3xl font-black text-slate-900 italic tracking-tighter uppercase mb-4">Start AI Analysis</h2>
-                    <p className="text-slate-500 font-medium leading-relaxed">Please upload your CV to let our AI build your career roadmap.</p>
+                    <p className="text-slate-500 font-medium leading-relaxed">Upload your CV to generate your personalized {new Date().getFullYear()} roadmap.</p>
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-6 w-full max-w-lg">
@@ -151,50 +172,64 @@ export default function HomePage() {
                   </div>
                 </motion.section>
               ) : (
-                /* لوحة التحكم (Dashboard) - تظهر فقط بعد نجاح التحليل */
                 <motion.div key="dash" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-                  <SkillRadar userSkills={masteredSkills} roadmapData={roadmapData} />
+                  {/* الرادار يستقبل المهارات الناقصة الجديدة */}
+                  <SkillRadar userSkills={masteredSkills} missingSkills={missingSkills} />
                   
-                  <section className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm text-left">
-                    <div className="flex items-center gap-4 mb-6">
+                  <section className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm text-left relative overflow-hidden">
+                    <div className="absolute right-0 top-0 w-32 h-32 bg-indigo-50/50 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+                    <div className="flex items-center gap-4 mb-6 relative z-10">
                       <div className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-lg"><i className="fa-solid fa-brain"></i></div>
                       <div>
                          <h3 className="font-black text-slate-900 text-lg italic tracking-tighter uppercase">Target: {user.targetTitle}</h3>
-                         <p className="text-indigo-600 text-[10px] font-black uppercase tracking-widest">Next Move Strategy</p>
+                         <p className="text-indigo-600 text-[10px] font-black uppercase tracking-widest">AI Strategy v3.0</p>
                       </div>
                     </div>
-                    <div className="bg-slate-50 rounded-[2rem] p-8 border border-slate-100">
+                    <div className="bg-slate-50 rounded-[2rem] p-8 border border-slate-100 relative z-10">
                       <p className="text-[13px] text-slate-600 font-bold italic leading-relaxed">"{user.aiRecommendation}"</p>
                     </div>
                   </section>
 
-                  {/* Skill Hub */}
                   <section className="bg-white rounded-[3rem] border border-slate-200 shadow-sm overflow-hidden">
                     <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                       <h3 className="font-black text-slate-900 text-xs uppercase italic tracking-tighter">Skill Hub</h3>
                       <div className="flex bg-white p-1 rounded-xl shadow-inner gap-1">
+                        <button onClick={() => setIsModalOpen(true)} className="px-5 py-2 rounded-lg text-[10px] font-black uppercase bg-indigo-600 text-white shadow-md hover:bg-indigo-700 transition-colors">
+                          <i className="fa-solid fa-map mr-2"></i> View Full Roadmap
+                        </button>
+                        <div className="w-[1px] bg-slate-100 mx-1"></div>
                         {['to-learn', 'mastered'].map(tab => (
                           <button key={tab} onClick={() => setActiveTab(tab)}
-                            className={`px-5 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${activeTab === tab ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400'}`}
+                            className={`px-5 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${activeTab === tab ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
                           >
-                            {tab === 'to-learn' ? `Roadmap` : `My Stack`}
+                            {tab === 'to-learn' ? `To Learn (${toLearn.length})` : `Mastered`}
                           </button>
                         ))}
                       </div>
                     </div>
-                    <div className="p-6 h-[400px] overflow-y-auto bg-white text-left">
+                    <div className="p-6 h-[400px] overflow-y-auto bg-white text-left custom-scrollbar">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {(activeTab === 'to-learn' ? toLearn : masteredSkills).map((skill, i) => {
                           const name = typeof skill === 'string' ? skill : (skill?.skillName || skill?.name || "Skill");
+                          const impact = skill?.impactPercentage ? `${skill.impactPercentage}%` : null;
                           return (
-                            <div key={i} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl group transition-all">
+                            <motion.div 
+                              initial={{ opacity: 0, x: -10 }} 
+                              animate={{ opacity: 1, x: 0 }} 
+                              transition={{ delay: i * 0.05 }}
+                              key={i} 
+                              className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl group hover:border-indigo-200 transition-all"
+                            >
                               <div className="flex items-center gap-4">
                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs ${activeTab === 'to-learn' ? 'bg-white text-indigo-600 border border-indigo-100' : 'bg-emerald-500 text-white'}`}>
                                   <i className={`fa-solid ${activeTab === 'to-learn' ? 'fa-rocket' : 'fa-check'}`}></i>
                                 </div>
-                                <span className="font-black text-slate-900 text-[13px] uppercase italic">{name}</span>
+                                <div className="flex flex-col">
+                                  <span className="font-black text-slate-900 text-[13px] uppercase italic">{name}</span>
+                                  {impact && <span className="text-[9px] text-indigo-500 font-black tracking-widest uppercase">Impact: {impact}</span>}
+                                </div>
                               </div>
-                            </div>
+                            </motion.div>
                           );
                         })}
                       </div>

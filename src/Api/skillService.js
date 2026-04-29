@@ -31,3 +31,4 @@ export const addSkill = async (skillData) => {
         throw error.response ? error.response.data : new Error("Failed to add skill");
     }
 }
+

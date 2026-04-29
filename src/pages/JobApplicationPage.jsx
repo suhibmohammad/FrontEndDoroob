@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getJobById } from '../Api/jobService';
+// استيراد دالة التقديم من ملف الخدمات الخاص بك
+import { applyToJob } from '../Api/applicationService'; 
 
 export default function JobApplicationPage() {
   const { id } = useParams();
@@ -8,12 +10,14 @@ export default function JobApplicationPage() {
 
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [applying, setApplying] = useState(false); // حالة خاصة لعملية الرفع
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [cvFile, setCvFile] = useState(null);
   const [saved, setSaved] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  // جلب بيانات الوظيفة عند تحميل الصفحة
   useEffect(() => {
     const fetchJob = async () => {
       try {
@@ -34,15 +38,33 @@ export default function JobApplicationPage() {
     if (e.target.files[0]) setCvFile(e.target.files[0]);
   };
 
-  const handleSubmit = (e) => {
+  // الربط الفعلي مع الـ API للتقديم على الوظيفة
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!cvFile) return;
-    setShowModal(false);
-    setSubmitted(true);
-    setCvFile(null);
+
+    try {
+      setApplying(true);
+      setError(null);
+      
+      // استدعاء دالة الـ API التي قمت بتعريفها
+      await applyToJob(id, cvFile);
+
+      // إذا نجحت العملية
+      setSubmitted(true);
+      setShowModal(false);
+      setCvFile(null);
+    } catch (err) {
+      console.error("Application error:", err);
+      // عرض الخطأ في حال فشل التقديم
+      alert(err?.message || "Something went wrong while applying.");
+    } finally {
+      setApplying(false);
+    }
   };
 
   const closeModal = () => {
+    if (applying) return; // منع إغلاق المودال أثناء الرفع
     setShowModal(false);
     setCvFile(null);
   };
@@ -58,7 +80,7 @@ export default function JobApplicationPage() {
     );
   }
 
-  if (error || !job) {
+  if (error && !job) {
     return (
       <div className="bg-gray-50 min-h-screen flex items-center justify-center">
         <div className="text-center bg-white p-10 rounded-2xl shadow-lg">
@@ -72,12 +94,12 @@ export default function JobApplicationPage() {
     );
   }
 
-  // تحويل بيانات الـ API
+  // تحويل بيانات الـ API للعرض
   const mappedJob = {
     id: job.id,
     title: job.title,
     company: job.companyName || 'Unknown Company',
-    logo: '/googleLogo.png',
+    logo: '/googleLogo.png', // يمكنك تغييرها لـ job.companyLogo إذا توفر
     date: job.createdAt ? new Date(job.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '',
     salary: job.salary,
     type: job.typeJob || '',
@@ -100,7 +122,7 @@ export default function JobApplicationPage() {
         </button>
 
         {submitted && (
-          <div className="mb-6 bg-green-50 border border-green-200 text-green-800 rounded-xl px-6 py-4 font-semibold">
+          <div className="mb-6 bg-green-50 border border-green-200 text-green-800 rounded-xl px-6 py-4 font-semibold animate-bounce">
             ✅ Your application has been submitted successfully!
           </div>
         )}
@@ -137,7 +159,7 @@ export default function JobApplicationPage() {
                   <i className="fa-solid fa-location-dot text-blue-800"></i>
                   <div>
                     <p className="text-xs text-gray-400">Location</p>
-                    <p className="text-sm font-bold text-blue-800">{mappedJob.location} ({mappedJob.type})</p>
+                    <p className="text-sm font-bold text-blue-800">{mappedJob.location}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -172,14 +194,6 @@ export default function JobApplicationPage() {
                     </div>
                   </>
                 )}
-                {mappedJob.responsibilities.length > 0 && (
-                  <>
-                    <h4 className="font-bold text-indigo-950 pt-2">Key Responsibilities:</h4>
-                    <ul className="list-disc pl-5 space-y-2">
-                      {mappedJob.responsibilities.map((r, i) => <li key={i}>{r}</li>)}
-                    </ul>
-                  </>
-                )}
               </div>
             </div>
 
@@ -206,16 +220,6 @@ export default function JobApplicationPage() {
                   {saved ? 'Saved ✓' : 'Save for Later'}
                 </button>
               </div>
-              <div className="mt-10 pt-8 border-t border-indigo-900">
-                <h4 className="text-xs uppercase tracking-widest text-indigo-400 font-bold mb-4">About {mappedJob.company}</h4>
-                <div className="flex items-center gap-3">
-                  <img src={mappedJob.logo} alt={mappedJob.company} className="w-10 h-10 rounded-lg bg-white p-1" />
-                  <div>
-                    <p className="text-sm font-bold">{mappedJob.company} Inc.</p>
-                    <a href="#" className="text-xs text-indigo-400 hover:underline">View Company Profile</a>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -231,7 +235,7 @@ export default function JobApplicationPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="bg-indigo-600 p-5 flex justify-between items-center text-white">
               <h3 className="text-xl font-bold">Submit Your Application</h3>
-              <button onClick={closeModal} className="text-white hover:text-gray-200 p-1 rounded-full hover:bg-indigo-700 transition-all">
+              <button onClick={closeModal} disabled={applying} className="text-white hover:text-gray-200 p-1 rounded-full hover:bg-indigo-700 transition-all">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -241,11 +245,10 @@ export default function JobApplicationPage() {
               <div className="mb-6">
                 <label className="block text-gray-700 text-sm font-semibold mb-3 uppercase tracking-wider">Required: Upload CV (PDF)</label>
                 <label htmlFor="file-upload"
-                  className="relative group mt-1 flex flex-col items-center justify-center px-6 pt-6 pb-7 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-all">
+                  className={`relative group mt-1 flex flex-col items-center justify-center px-6 pt-6 pb-7 border-2 border-dashed rounded-xl cursor-pointer transition-all ${applying ? 'opacity-50 cursor-not-allowed' : 'border-gray-300 hover:border-indigo-400 hover:bg-indigo-50'}`}>
                   {!cvFile ? (
                     <div className="text-center space-y-2">
-                      <svg className="mx-auto h-12 w-12 text-gray-400 group-hover:text-indigo-500 transition-colors"
-                        stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                      <svg className="mx-auto h-12 w-12 text-gray-400 group-hover:text-indigo-500 transition-colors" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                         <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                       <p className="text-sm font-medium text-indigo-600">Click or drag to upload</p>
@@ -256,15 +259,20 @@ export default function JobApplicationPage() {
                       <i className="fa-solid fa-file-pdf text-4xl text-indigo-600"></i>
                       <p className="text-sm font-bold text-gray-900 break-words">{cvFile.name}</p>
                       <p className="text-xs text-gray-600">{(cvFile.size / 1024).toFixed(1)} KB</p>
-                      <span className="text-xs text-indigo-700 font-semibold">(Click again to change)</span>
+                      {!applying && <span className="text-xs text-indigo-700 font-semibold">(Click again to change)</span>}
                     </div>
                   )}
-                  <input id="file-upload" type="file" accept=".pdf" className="sr-only" onChange={handleFileChange} />
+                  <input id="file-upload" type="file" accept=".pdf" className="sr-only" onChange={handleFileChange} disabled={applying} />
                 </label>
               </div>
-              <button type="submit" disabled={!cvFile}
-                className={`w-full font-bold py-3.5 rounded-xl transition-all duration-200 shadow-lg ${cvFile ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
-                Confirm & Submit Application
+              <button type="submit" disabled={!cvFile || applying}
+                className={`w-full font-bold py-3.5 rounded-xl transition-all duration-200 shadow-lg flex items-center justify-center ${cvFile && !applying ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
+                {applying ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                    Submitting...
+                  </>
+                ) : 'Confirm & Submit Application'}
               </button>
             </form>
           </div>

@@ -1,21 +1,26 @@
 import React, { useState } from 'react';
 import Navbar from '../components/Navbar';
-import Sidebar from '../components/Sidebar';
+import LeftSidebar from '../components/LeftSidebar';
 import RightPanel from '../components/RightPanel';
 import JobCard from '../components/JobCard';
-import Footer from '../components/Footer';
 import { useJobs } from '../context/JobContext';
+import { useUser } from '../context/UserContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function SavedJobsPage() {
   const { loading, savedJobs, savedJobIds, toggleSaveJob } = useJobs();
+  const { user } = useUser();
+  
   const [search, setSearch] = useState('');
   const [jobTypes, setJobTypes] = useState([]);
   const [experience, setExperience] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+
   const jobsPerPage = 4;
 
   const toggleJobType = (type) => {
-    setJobTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
+    const formatted = type.replace(/\s+/g, '');
+    setJobTypes(prev => prev.includes(formatted) ? prev.filter(t => t !== formatted) : [...prev, formatted]);
   };
 
   const handleUnsave = (id) => {
@@ -23,154 +28,177 @@ export default function SavedJobsPage() {
     if (job) toggleSaveJob(job);
   };
 
-  // الوظائف المحفوظة جاهزة مباشرة من الـ localStorage — لا تحتاج انتظار API
+  // --- Filtering Logic ---
   const filtered = savedJobs.filter(job => {
-    const matchSearch = job.title.toLowerCase().includes(search.toLowerCase()) ||
-      job.company.toLowerCase().includes(search.toLowerCase());
-    const matchType = jobTypes.length === 0 || jobTypes.some(t =>
-      job.type.toLowerCase().includes(t.toLowerCase()) ||
-      job.jobType.toLowerCase().includes(t.toLowerCase())
-    );
-    const matchExp = !experience || job.experience.toLowerCase() === experience.toLowerCase();
-    return matchSearch && matchType && matchExp;
+    const titleMatch = (job.title || "").toLowerCase().includes(search.toLowerCase());
+    const companyMatch = (job.company || "").toLowerCase().includes(search.toLowerCase());
+    
+    const matchType = jobTypes.length === 0 || jobTypes.some(t => {
+      const jobTypeData = (job.type || job.jobType || "").replace(/\s+/g, '').toLowerCase();
+      return jobTypeData.includes(t.toLowerCase());
+    });
+    
+    const matchExp = !experience || (job.experience || "").toLowerCase().includes(experience.toLowerCase());
+    
+    return (titleMatch || companyMatch) && matchType && matchExp;
   });
 
   const totalPages = Math.ceil(filtered.length / jobsPerPage);
   const paginated = filtered.slice((currentPage - 1) * jobsPerPage, currentPage * jobsPerPage);
 
   return (
-    <div className="bg-gray-100 overflow-x-hidden pt-16">
+    <div className="bg-[#F8FAFC] min-h-screen font-sans antialiased pb-20">
       <Navbar />
-      <div className="grid grid-cols-1 gap-5 mx-5 md:grid-cols-3 my-5 lg:grid-cols-12">
-        <Sidebar />
+      
+      <div className="max-w-[1440px] mx-auto pt-28 md:pt-32 px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col lg:flex-row gap-8 items-start text-left">
+          
+          {/* الجانب الأيسر: Sticky Sidebar */}
+          <aside className="hidden lg:block w-[300px] shrink-0 sticky top-32 h-fit">
+            <LeftSidebar user={user} />
+          </aside>
 
-        <div className="col-span-6 bg-white border rounded-md m-2 gap-4 p-4 shadow-lg shadow-gray-500 mx-auto w-full">
-          <div className="flex flex-col justify-center items-center gap-3">
-
-            {/* Search & Filter */}
-            <div className="bg-white p-6 rounded-xl shadow-sm mb-6 border border-gray-100 w-full" dir="ltr">
-              <div className="flex flex-wrap gap-4 mb-6">
-                <div className="flex-1 min-w-[200px] relative">
-                  <input
-                    type="text"
-                    placeholder="Search saved jobs..."
-                    value={search}
-                    onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
-                    className="w-full pr-4 pl-10 py-3 rounded-lg border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none"
-                  />
-                  <span className="absolute left-3 top-3.5 text-gray-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </span>
-                </div>
-                <button className="bg-blue-800 hover:bg-indigo-700 text-white px-8 py-3 rounded-lg font-semibold transition-all duration-200 shadow-md">
-                  Search
-                </button>
+          {/* المحتوى الرئيسي */}
+          <main className="flex-1 w-full max-w-[750px] mx-auto space-y-8">
+            
+            {/* الهيدر العلوي */}
+            <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex justify-between items-center relative overflow-hidden">
+              <div className="absolute right-0 top-0 w-24 h-24 bg-rose-50/50 rounded-full -mr-12 -mt-12 blur-2xl"></div>
+              <div className="relative z-10">
+                <h1 className="text-2xl font-black text-slate-900 italic uppercase tracking-tighter">Saved Opportunities</h1>
+                <p className="text-sm text-slate-500 font-medium">Your curated list of future careers</p>
               </div>
-              <hr className="mb-6 border-gray-100" />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                  <label className="block text-gray-600 font-semibold mb-3 text-sm uppercase tracking-wider">Job Type</label>
-                  <div className="flex flex-wrap gap-3">
-                    {['Full Time', 'Part Time', 'Remote'].map(type => (
-                      <label key={type} className="cursor-pointer" onClick={() => { toggleJobType(type); setCurrentPage(1); }}>
-                        <span className={`px-4 py-2 rounded-full border text-sm transition-all inline-block ${jobTypes.includes(type) ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-200'}`}>
-                          {type}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-gray-600 font-semibold mb-3 text-sm uppercase tracking-wider">Required Experience</label>
-                  <select
-                    value={experience}
-                    onChange={e => { setExperience(e.target.value); setCurrentPage(1); }}
-                    className="w-full p-3 rounded-lg border border-gray-200 bg-gray-50 text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 outline-none transition-all cursor-pointer"
-                  >
-                    <option value="">Select Experience Level...</option>
-                    <option value="fresh">Fresh Graduate (0-1 Years)</option>
-                    <option value="junior">Junior (1-3 Years)</option>
-                    <option value="mid">Mid-Level (3-5 Years)</option>
-                    <option value="senior">Senior (5+ Years)</option>
-                  </select>
-                </div>
+              <div className="bg-rose-500 text-white px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl relative z-10">
+                {savedJobs.length} Saved
               </div>
             </div>
 
-            {/* عدد الوظائف المحفوظة */}
-            {savedJobIds.length > 0 && (
-              <div className="w-full text-sm text-gray-500 mb-2">
-                You have <span className="font-bold text-indigo-600">{savedJobIds.length}</span> saved job{savedJobIds.length !== 1 ? 's' : ''}
+            {/* لوحة التحكم والبحث */}
+            <section className="bg-white rounded-[3rem] p-8 shadow-sm border border-slate-100 relative">
+              <div className="relative mb-8">
+                <input
+                  type="text"
+                  placeholder="Search in your saved jobs..."
+                  value={search}
+                  onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+                  className="w-full pl-14 pr-6 py-5 rounded-[2rem] bg-slate-50 border-none focus:ring-2 focus:ring-rose-500 font-bold text-slate-700 outline-none shadow-inner transition-all"
+                />
+                <i className="fa-solid fa-bookmark absolute left-6 top-1/2 -translate-y-1/2 text-rose-400"></i>
               </div>
-            )}
 
-            {/* Loading State */}
-            {loading && savedJobIds.length > 0 && (
-              <div className="text-center py-10">
-                <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-                <p className="text-gray-500">Loading your saved jobs...</p>
-              </div>
-            )}
-
-            {/* Job Cards */}
-            {!loading && (
-              <>
-                {paginated.length === 0 ? (
-                  <div className="text-gray-500 text-center py-10">
-                    {savedJobIds.length === 0
-                      ? "You haven't saved any jobs yet."
-                      : search
-                      ? `No saved jobs match "${search}".`
-                      : "No saved jobs match your filters."}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pt-6 border-t border-slate-50">
+                <div>
+                  <span className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em] block mb-4">Job Type</span>
+                  <div className="flex flex-wrap gap-2">
+                    {['Full Time', 'Part Time', 'Remote'].map(type => {
+                      const formatted = type.replace(/\s+/g, '');
+                      const isActive = jobTypes.includes(formatted);
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => { toggleJobType(type); setCurrentPage(1); }}
+                          className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-tighter transition-all border-2 ${
+                            isActive 
+                            ? 'bg-slate-900 text-white border-slate-900 shadow-lg scale-105' 
+                            : 'bg-white text-slate-400 border-slate-100 hover:border-rose-200 hover:text-rose-600'
+                          }`}
+                        >
+                          {type}
+                        </button>
+                      );
+                    })}
                   </div>
-                ) : (
-                  paginated.map(job => (
-                    <JobCard key={job.id} job={job} showUnsave onUnsave={handleUnsave} savedJobs={savedJobIds} />
-                  ))
-                )}
-              </>
-            )}
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em] block mb-4">Experience Level</span>
+                  <select
+                    value={experience}
+                    onChange={e => { setExperience(e.target.value); setCurrentPage(1); }}
+                    className="w-full bg-slate-50 border-none rounded-2xl p-4 text-[11px] font-black text-slate-600 outline-none focus:ring-2 focus:ring-rose-500 cursor-pointer shadow-inner appearance-none uppercase tracking-widest"
+                  >
+                    <option value="">All Experience Levels</option>
+                    <option value="fresh">Fresh / Entry Level</option>
+                    <option value="junior">Junior Level</option>
+                    <option value="mid">Mid-Level</option>
+                    <option value="senior">Senior Level</option>
+                  </select>
+                </div>
+              </div>
+            </section>
+
+            {/* قائمة الوظائف المحفوظة */}
+            <div className="space-y-6">
+              {loading && savedJobIds.length > 0 ? (
+                <div className="py-24 text-center bg-white rounded-[3rem] border border-slate-100 shadow-sm">
+                  <div className="w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest italic">Syncing Vault...</p>
+                </div>
+              ) : paginated.length === 0 ? (
+                <div className="py-20 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-200 text-slate-400 font-bold italic">
+                  <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
+                    <i className="fa-regular fa-folder-open text-3xl text-slate-200"></i>
+                  </div>
+                  No saved jobs found matching these filters.
+                </div>
+              ) : (
+                <AnimatePresence mode='popLayout'>
+                  {paginated.map(job => (
+                    <motion.div 
+                      key={job.id} 
+                      layout 
+                      initial={{ opacity: 0, scale: 0.95 }} 
+                      animate={{ opacity: 1, scale: 1 }} 
+                      exit={{ opacity: 0, x: -20 }}
+                      className="group"
+                    >
+                      <JobCard 
+                        job={job} 
+                        showUnsave 
+                        onUnsave={handleUnsave} 
+                        savedJobs={savedJobIds} 
+                      />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              )}
+            </div>
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between border border-gray-400 bg-white px-2 py-4 sm:px-6 rounded-xl shadow-sm mt-8 w-full" dir="ltr">
-                <div className="hidden sm:flex sm:flex-1 px-5 sm:items-center sm:justify-between">
-                  <p className="text-sm text-gray-700">
-                    Showing <span className="font-semibold">{(currentPage - 1) * jobsPerPage + 1}</span> to{' '}
-                    <span className="font-semibold">{Math.min(currentPage * jobsPerPage, filtered.length)}</span> of{' '}
-                    <span className="font-semibold">{filtered.length}</span> results
-                  </p>
-                </div>
-                <nav className="isolate inline-flex -space-x-px rounded-md gap-2">
-                  <button onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                    className="relative inline-flex items-center rounded-lg px-3 py-2 text-gray-400 border border-gray-200 hover:bg-gray-50 transition-colors">
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
-                    </svg>
+            {!loading && totalPages > 1 && (
+              <div className="flex justify-center gap-3 pt-4">
+                {[...Array(totalPages)].map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setCurrentPage(i + 1);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className={`w-12 h-12 rounded-2xl font-black text-xs transition-all shadow-sm ${
+                      currentPage === i + 1 
+                      ? 'bg-slate-900 text-white shadow-xl scale-110' 
+                      : 'bg-white text-slate-400 border border-slate-100 hover:bg-slate-50'
+                    }`}
+                  >
+                    {i + 1}
                   </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                    <button key={page} onClick={() => setCurrentPage(page)}
-                      className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${currentPage === page ? 'bg-indigo-600 text-white' : 'text-gray-900 border border-gray-200 hover:bg-gray-50'}`}>
-                      {page}
-                    </button>
-                  ))}
-                  <button onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-                    className="relative inline-flex items-center rounded-lg px-3 py-2 text-gray-400 border border-gray-200 hover:bg-gray-50 transition-colors">
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </nav>
+                ))}
               </div>
             )}
-          </div>
-        </div>
+          </main>
 
-        <RightPanel />
+          {/* الجانب الأيمن: Sticky Panel */}
+          <aside className="hidden xl:block w-[320px] shrink-0 sticky top-32 h-fit">
+            <RightPanel />
+            <div className="mt-8 p-8 bg-slate-900 rounded-[2.5rem] text-white relative overflow-hidden">
+                <div className="absolute left-0 bottom-0 w-24 h-24 bg-rose-500/20 rounded-full -ml-10 -mb-10 blur-2xl"></div>
+                <h4 className="font-black text-lg italic mb-2 uppercase tracking-tighter">Vault Security</h4>
+                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest leading-relaxed">Your saved jobs are synced across all your devices.</p>
+            </div>
+          </aside>
+          
+        </div>
       </div>
-      <Footer />
     </div>
   );
 }
