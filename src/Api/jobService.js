@@ -4,18 +4,22 @@ import Api from './axiosConfig.js';
 // ===================== إنشاء وظيفة جديدة =====================
 // POST /api/v1/job?userId=...
 // Body: { title, description, salary, location, typeJob, experienceLevel, companyId, skills }
-export const createJob = async (userId, jobData) => {
+export const createJob = async (jobData) => {
     try {
         const token = localStorage.getItem('token');
-        const response = await Api.post(`/job?userId=${userId}`, jobData, {
+        console.log(token);
+        
+        const response = await Api.post(`/job`, jobData, {
             headers: {
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json' // ضروري جداً ليفهم السيرفر أنك ترسل JSON
             }
         });
-        console.log(response.data);
         return response;
     } catch (error) {
-        throw error.response ? error.response.data : new Error("Error creating job");
+        // طباعة تفاصيل الخطأ القادمة من السيرفر (Response) وليس فقط الخطأ العام
+        console.error("Server Error Response:", error.response?.data);
+        throw error.response ? error.response.data : new Error("Error");
     }
 };
 
@@ -56,11 +60,11 @@ export const searchJobsBySkill = async (skill, page = 1, pageSize = 10) => {
 
 // ===================== حذف وظيفة =====================
 // DELETE /api/v1/job/{id}?adminId=...
-export const deleteJob = async (jobId, adminId) => {
+export const deleteJob = async (jobId) => {
     try {
         const token = localStorage.getItem('token');
         const response = await Api.delete(`/job/${jobId}`, {
-            params: { adminId },
+ 
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -86,5 +90,16 @@ export const updateJob = async (jobId, adminId, jobData) => {
         return response;
     } catch (error) {
         throw error.response ? error.response.data : new Error("Error updating job");
+    }
+};
+export const getJobsByCompany = async (companyId, page = 1, pageSize = 10) => {
+    try {
+        const response = await Api.get('/job/company', {
+            params: { companyId, page, pageSize }
+        });
+        return response.data; // نفترض أن البيانات تعود في response.data
+    } catch (error) {
+        console.error("Fetch Company Jobs Error:", error.response?.data);
+        throw error.response ? error.response.data : new Error("Error fetching jobs");
     }
 };

@@ -9,24 +9,26 @@ import { useUser } from '../context/UserContext';
 import { useNavigate } from 'react-router-dom';
 
 // مكون المودال (Glassmorphism)
-const EditModal = ({ title, isOpen, onClose, onSave, children }) => (
+const EditModal = ({ title, isOpen, onClose, onSave, children, showSave = true }) => (
   <AnimatePresence>
     {isOpen && (
       <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
         <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="bg-white rounded-[3rem] w-full max-w-lg overflow-hidden shadow-2xl relative z-10">
           <div className="px-10 py-8 border-b border-gray-50 flex justify-between items-center bg-slate-50/50">
-            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter italic">Edit {title}</h3>
+            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter italic">{title}</h3>
             <button onClick={onClose} className="text-slate-300 hover:text-rose-500 transition-colors"><i className="fa-solid fa-circle-xmark text-2xl"></i></button>
           </div>
-          <div className="p-10">
+          <div className="p-10 max-h-[60vh] overflow-y-auto">
             {children}
-            <button 
-              onClick={onSave}
-              className="w-full mt-8 bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:bg-indigo-600 transition-all shadow-xl shadow-indigo-100"
-            >
-              Save Changes
-            </button>
+            {showSave && (
+              <button 
+                onClick={onSave}
+                className="w-full mt-8 bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:bg-indigo-600 transition-all shadow-xl shadow-indigo-100"
+              >
+                Save Changes
+              </button>
+            )}
           </div>
         </motion.div>
       </div>
@@ -40,6 +42,7 @@ export default function ProfilePage() {
   const [cvAnalyzing, setCvAnalyzing] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
   const [skills, setSkills] = useState([]);
+  const [myCompanies, setMyCompanies] = useState([]);
   const [newSkill, setNewSkill] = useState("");
   const navigate = useNavigate();
   const { user: globalUser, setUser: updateGlobalUser } = useUser();
@@ -49,24 +52,32 @@ export default function ProfilePage() {
   const cvInputRef = useRef(null);
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchInitialData = async () => {
       try {
-        const data = await getUserProfile();
-        setUser(data);
-        setSkills(data.skills || []);
+        const token = localStorage.getItem('token');
+        const [profileData, companiesRes] = await Promise.all([
+          getUserProfile(),
+          axios.get('http://doroob.runasp.net/api/v1/company/my-companies', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }).catch(() => ({ data: [] }))
+        ]);
+
+        setUser(profileData);
+        setSkills(profileData.skills || []);
+        setMyCompanies(companiesRes.data || []);
         setEditData({
-          fName: data.fName || '',
-          lName: data.lName || '',
-          headline: data.headline || '',
-          about: data.about || ''
+          fName: profileData.fName || '',
+          lName: profileData.lName || '',
+          headline: profileData.headline || '',
+          about: profileData.about || ''
         });
       } catch (err) {
-        console.error("Error fetching profile:", err);
+        console.error("Error fetching data:", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchUserData();
+    fetchInitialData();
   }, []);
 
   const handleUpdateInfo = async () => {
@@ -90,8 +101,7 @@ export default function ProfilePage() {
     try {
       setLoading(true);
       const response = await addSkillAPI({ skillName: newSkill });
-      const updatedSkills = [...skills, response];
-      setSkills(updatedSkills);
+      setSkills([...skills, response]);
       setNewSkill("");
       setActiveModal(null);
     } catch (err) { console.error(err); } finally { setLoading(false); }
@@ -128,7 +138,7 @@ export default function ProfilePage() {
 
     try {
       setCvAnalyzing(true);
-      const response = await axios.post(`http://doroob.runasp.net/api/Resume/upload-resume/${globalUser.id}`, formData, {
+      await axios.post(`http://doroob.runasp.net/api/Resume/upload-resume/${globalUser.id}`, formData, {
           headers: { 'Content-Type': 'multipart/form-data', 'Authorization': `Bearer ${token}` }
       });
       alert("CV Analyzed! Refreshing profile...");
@@ -144,16 +154,17 @@ export default function ProfilePage() {
   return (
     <div className="bg-[#F9FAFC] min-h-screen pt-24 pb-12 font-sans">
       <Navbar />
+      
+      <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+      <input type="file" ref={cvInputRef} onChange={handleCVUpload} className="hidden" accept=".pdf,.doc,.docx" />
+
       <main className="max-w-3xl mx-auto px-4">
-        
-        {/* Profile Card */}
         <div className="bg-white rounded-[4rem] shadow-xl border border-white overflow-hidden mb-8 relative">
           <div className="h-44 bg-slate-900 relative">
              <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
           </div>
           
           <div className="px-10 pb-12 relative flex flex-col items-center -mt-20">
-            {/* Avatar */}
             <div className="relative mb-6">
               <img 
                 src={user?.profileImageUrl || '/Abood.png'} 
@@ -166,7 +177,6 @@ export default function ProfilePage() {
               </button>
             </div>
 
-            {/* Name & Headline */}
             <div className="text-center group cursor-pointer" onClick={() => setActiveModal('identity')}>
               <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase italic flex items-center justify-center gap-3">
                 {user?.fName} {user?.lName}
@@ -175,7 +185,6 @@ export default function ProfilePage() {
               <p className="text-indigo-600 font-bold text-xl mt-1 italic uppercase tracking-tighter">{user?.headline || "Software Engineer"}</p>
             </div>
 
-            {/* AI Resume Section */}
             <div className="mt-8 w-full px-6">
                 <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-4 text-left w-full">
@@ -199,7 +208,6 @@ export default function ProfilePage() {
                 </div>
             </div>
 
-            {/* About Section */}
             <div className="mt-10 pt-8 border-t border-slate-50 w-full text-center group cursor-pointer" onClick={() => setActiveModal('about')}>
               <p className="text-slate-500 leading-relaxed italic px-6 font-medium text-lg">
                 "{user?.about || "Add a professional bio to stand out..."}"
@@ -207,7 +215,6 @@ export default function ProfilePage() {
               </p>
             </div>
 
-            {/* Skills Section */}
             <div className="flex flex-wrap justify-center gap-2 mt-10">
               <AnimatePresence>
                 {skills.map((s) => (
@@ -222,7 +229,6 @@ export default function ProfilePage() {
               <button onClick={() => setActiveModal('skills')} className="px-5 py-2.5 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-slate-900 transition-all">+ Add Skill</button>
             </div>
 
-            {/* --- قسم إنشاء الشركة الجديد (Company Section) --- */}
             <div className="mt-12 w-full border-t border-slate-100 pt-10 px-6">
               <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[3rem] p-8 shadow-2xl relative overflow-hidden group">
                 <div className="absolute -right-10 -top-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/20 transition-all duration-700"></div>
@@ -233,15 +239,24 @@ export default function ProfilePage() {
                     </div>
                     <div>
                       <h3 className="text-white font-black uppercase tracking-tighter text-xl italic">Grow Your Business</h3>
-                      <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Create a company profile to post jobs</p>
+                      <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Manage or create company profiles</p>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => navigate('/create-company')}
-                    className="px-10 py-4 bg-indigo-600 hover:bg-white hover:text-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all transform active:scale-95 shadow-lg shadow-indigo-500/20"
-                  >
-                    Create Company +
-                  </button>
+                  
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => setActiveModal('myCompanies')}
+                      className="px-6 py-4 bg-white/10 hover:bg-white/20 text-white border border-white/10 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all"
+                    >
+                      My Companies ({myCompanies.length})
+                    </button>
+                    <button 
+                      onClick={() => navigate('/create-company')}
+                      className="px-6 py-4 bg-indigo-600 hover:bg-white hover:text-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg"
+                    >
+                      Create +
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -250,79 +265,57 @@ export default function ProfilePage() {
         </div>
       </main>
 
-      {/* --- Modals Implementation --- */}
-      
-      {/* 1. Identity Modal */}
+      {/* مودال الشركات */}
       <EditModal 
-        title="Identity" 
-        isOpen={activeModal === 'identity'} 
+        title="My Companies" 
+        isOpen={activeModal === 'myCompanies'} 
         onClose={() => setActiveModal(null)}
-        onSave={handleUpdateInfo}
+        showSave={false}
       >
+        <div className="space-y-4">
+          {myCompanies.length > 0 ? myCompanies.map((company) => (
+            <div 
+              key={company.id} 
+              className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-200 transition-all cursor-pointer hover:bg-white group"
+              onClick={() => navigate(`/company-dashboard/${company.id}`)} // التوجيه للداشبورد الخاص بالشركة
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm text-slate-400 group-hover:text-indigo-600 transition-colors">
+                   {company.logo ? <img src={company.logo} alt="" className="w-full h-full rounded-xl object-cover" /> : <i className="fa-solid fa-building"></i>}
+                </div>
+                <div>
+                  <h4 className="font-black text-slate-900 uppercase text-xs tracking-tighter">{company.name}</h4>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">Click to open dashboard</p>
+                </div>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-all">
+                <i className="fa-solid fa-arrow-right text-indigo-600 text-xs"></i>
+              </div>
+            </div>
+          )) : (
+            <p className="text-center text-slate-400 font-bold py-4 italic">No companies managed yet.</p>
+          )}
+        </div>
+      </EditModal>
+
+      {/* باقي المودالات */}
+      <EditModal title="Edit Identity" isOpen={activeModal === 'identity'} onClose={() => setActiveModal(null)} onSave={handleUpdateInfo}>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <input 
-              className="w-full p-4 rounded-2xl bg-slate-50 border-none font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500" 
-              placeholder="First Name" 
-              value={editData.fName}
-              onChange={(e) => setEditData({...editData, fName: e.target.value})}
-            />
-            <input 
-              className="w-full p-4 rounded-2xl bg-slate-50 border-none font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500" 
-              placeholder="Last Name" 
-              value={editData.lName}
-              onChange={(e) => setEditData({...editData, lName: e.target.value})}
-            />
+            <input className="w-full p-4 rounded-2xl bg-slate-50 border-none font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="First Name" value={editData.fName} onChange={(e) => setEditData({...editData, fName: e.target.value})} />
+            <input className="w-full p-4 rounded-2xl bg-slate-50 border-none font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Last Name" value={editData.lName} onChange={(e) => setEditData({...editData, lName: e.target.value})} />
           </div>
-          <input 
-            className="w-full p-4 rounded-2xl bg-slate-50 border-none font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500" 
-            placeholder="Headline (e.g. Senior Developer)" 
-            value={editData.headline}
-            onChange={(e) => setEditData({...editData, headline: e.target.value})}
-          />
+          <input className="w-full p-4 rounded-2xl bg-slate-50 border-none font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Headline" value={editData.headline} onChange={(e) => setEditData({...editData, headline: e.target.value})} />
         </div>
       </EditModal>
 
-      {/* 2. About Modal */}
-      <EditModal 
-        title="Bio" 
-        isOpen={activeModal === 'about'} 
-        onClose={() => setActiveModal(null)}
-        onSave={handleUpdateInfo}
-      >
-        <textarea 
-          rows="5"
-          className="w-full p-5 rounded-3xl bg-slate-50 border-none font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 resize-none" 
-          placeholder="Tell us about yourself..." 
-          value={editData.about}
-          onChange={(e) => setEditData({...editData, about: e.target.value})}
-        />
+      <EditModal title="Edit Bio" isOpen={activeModal === 'about'} onClose={() => setActiveModal(null)} onSave={handleUpdateInfo}>
+        <textarea rows="5" className="w-full p-5 rounded-3xl bg-slate-50 border-none font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 resize-none" value={editData.about} onChange={(e) => setEditData({...editData, about: e.target.value})} />
       </EditModal>
 
-      {/* 3. Skills Modal */}
-      <EditModal 
-        title="New Skill" 
-        isOpen={activeModal === 'skills'} 
-        onClose={() => setActiveModal(null)}
-        onSave={handleAddSkill}
-      >
-        <input 
-          className="w-full p-4 rounded-2xl bg-slate-50 border-none font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500" 
-          placeholder="Skill name (e.g. React, Docker)" 
-          value={newSkill}
-          onChange={(e) => setNewSkill(e.target.value)}
-          autoFocus
-        />
+      <EditModal title="New Skill" isOpen={activeModal === 'skills'} onClose={() => setActiveModal(null)} onSave={handleAddSkill}>
+        <input className="w-full p-4 rounded-2xl bg-slate-50 border-none font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Skill name" value={newSkill} onChange={(e) => setNewSkill(e.target.value)} autoFocus />
       </EditModal>
-
-      {/* 4. Create Company Modal (New) */}
-   
-        <div className="space-y-4">
-          <input className="w-full p-4 rounded-2xl bg-slate-50 border-none font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Company Name" />
-          <input className="w-full p-4 rounded-2xl bg-slate-50 border-none font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Industry" />
-          <textarea rows="3" className="w-full p-4 rounded-2xl bg-slate-50 border-none font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 resize-none" placeholder="Company Bio" />
-        </div>
- 
-      </div>
+    </div>
   );
 }

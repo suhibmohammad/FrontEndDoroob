@@ -32,3 +32,14 @@ export const uploadImageCompany = async (companyId, imageFile) => {
         throw error.response ? error.response.data : new Error("Failed to upload company image");
     }
 }
+export const getCompanyById = async (companyId) => {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await api.get(`/company/${companyId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        return response.data;
+    } catch (error) {
+        throw error.response ? error.response.data : new Error("Failed to fetch company info");
+    }
+}

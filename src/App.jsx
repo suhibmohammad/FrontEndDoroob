@@ -19,6 +19,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import ProfileSkeleton from './components/ProfileSkeleton';
 import HomeSkeleton from './components/HomeSkeleton';
 import CompanyDashboard from './pages/CompanyDashboard';
+import MyJobs from './pages/MyJobs';
 
 export default function App() {
   return (
@@ -35,6 +36,10 @@ export default function App() {
 <Route element={<ProtectedRoute loadingComponent={<ProfileSkeleton />} />}>
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
+<Route element={<ProtectedRoute loadingComponent={<ProfileSkeleton />} />}>
+  {/* أضف :id إلى نهاية المسار */}
+  <Route path="/company-jobs/:id" element={<MyJobs />} />
+</Route>
 <Route element={<ProtectedRoute loadingComponent={<HomeSkeleton />} />}>
         <Route path="/home" element={<HomePage />} />
         </Route>
@@ -47,7 +52,7 @@ export default function App() {
         <Route path="/review-application/:id" element={<ReviewApplicationPage />} />
 
         <Route path="/create-company" element={<CreateCompanyPage />} />
-        <Route path="/company-dashboard" element={<CompanyDashboard />} />
+        <Route path="/company-dashboard/:id" element={<CompanyDashboard />} />
         </Route>
       </Routes>
     </BrowserRouter>

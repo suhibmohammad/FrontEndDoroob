@@ -2,16 +2,16 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
-const CompanySidebar = () => {
+// أضفنا props لاستلام بيانات الشركة والـ id
+const CompanySidebar = ({ companyId, companyLogo, companyName }) => {
   const navigate = useNavigate();
 
+  // تحديث المسارات لتشمل الـ id الديناميكي
   const menuItems = [
-    { name: 'Overview', path: '/company-dashboard', icon: 'fa-chart-pie' },
-    { name: 'My Jobs', path: '/company-jobs', icon: 'fa-briefcase' },
-    { name: 'Applicants', path: '/applicants', icon: 'fa-users' },
-    { name: 'Messages', path: '/messages', icon: 'fa-comment-dots' },
-    { name: 'Company Profile', path: '/edit-company', icon: 'fa-building' },
-    { name: 'Settings', path: '/settings', icon: 'fa-gear' },
+    { name: 'Overview', path: `/company-dashboard/${companyId}`, icon: 'fa-chart-pie' },
+    { name: 'My Jobs', path: `/company-jobs/${companyId}`, icon: 'fa-briefcase' },
+    { name: 'Applicants', path: `/applicants/${companyId}`, icon: 'fa-users' },
+    { name: 'Settings', path: `/settings/${companyId}`, icon: 'fa-gear' },
   ];
 
   const handleLogout = () => {
@@ -64,14 +64,19 @@ const CompanySidebar = () => {
           Logout
         </button>
 
-        {/* Quick User Info */}
+        {/* Quick User Info - تم ربطها بالبيانات الحقيقية */}
         <div className="bg-slate-800/50 p-4 rounded-[2rem] flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-indigo-100 overflow-hidden border-2 border-indigo-500/30">
-            {/* هنا بتعرض لوجو الشركة اللي لسه رفعناه */}
-            <img src="/placeholder-logo.png" alt="Company" className="w-full h-full object-cover" />
+          <div className="w-10 h-10 rounded-full bg-indigo-100 overflow-hidden border-2 border-indigo-500/30 flex items-center justify-center">
+            {companyLogo ? (
+              <img src={companyLogo} alt="Company" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-indigo-600 font-black text-xs">{companyName?.substring(0, 2).toUpperCase()}</span>
+            )}
           </div>
           <div className="overflow-hidden text-ellipsis">
-            <p className="text-white font-black text-[10px] uppercase truncate tracking-tighter">Company Admin</p>
+            <p className="text-white font-black text-[10px] uppercase truncate tracking-tighter">
+              {companyName || "Company Admin"}
+            </p>
             <p className="text-slate-500 font-bold text-[8px] uppercase tracking-widest truncate">Manage Account</p>
           </div>
         </div>
