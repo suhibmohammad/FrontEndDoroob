@@ -20,6 +20,7 @@ import ProfileSkeleton from './components/ProfileSkeleton';
 import HomeSkeleton from './components/HomeSkeleton';
 import CompanyDashboard from './pages/CompanyDashboard';
 import MyJobs from './pages/MyJobs';
+import ApplicantsPage from './pages/ApplicantsPage';
 
 export default function App() {
   return (
@@ -37,6 +38,8 @@ export default function App() {
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
 <Route element={<ProtectedRoute loadingComponent={<ProfileSkeleton />} />}>
+ 
+ <Route path="/applicants/:companyId/:jobId" element={<ApplicantsPage />} />
   {/* أضف :id إلى نهاية المسار */}
   <Route path="/company-jobs/:id" element={<MyJobs />} />
 </Route>

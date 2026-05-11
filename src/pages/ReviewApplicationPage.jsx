@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getApplicationDetails, deleteApplication } from '../Api/applicationService';
+import { getJobById } from '../Api/jobService';
 
 // إعدادات ألوان الحالات
 const statusConfig = {
@@ -27,9 +28,11 @@ export default function ReviewApplicationPage() {
         setLoading(true);
         setError(null);
         const response = await getApplicationDetails(id);
+        const data =await getJobById(response.data.jobId);        
+        console.log(data.data);
         
         // التعامل مع شكل استجابة السيرفر (سواء كانت البيانات مباشرة أو داخل data)
-        const applicationData = response.data?.data || response.data;
+        const applicationData = data.data 
 
         if (applicationData) {
           setApp(applicationData);
@@ -114,7 +117,7 @@ export default function ReviewApplicationPage() {
                 <div className="flex items-center gap-5">
                   <div className="w-20 h-20 bg-gray-50 rounded-2xl flex items-center justify-center border border-gray-100 overflow-hidden shrink-0">
                     <img 
-                      src={app.companyLogo || app.job?.companyLogo || '/default-company.png'} 
+                      src={app.logoUrl || app.job?.companyLogo || '/default-company.png'} 
                       alt="Company" 
                       className="w-16 h-16 object-contain" 
                     />
@@ -172,7 +175,7 @@ export default function ReviewApplicationPage() {
             <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100">
               <h3 className="text-xl font-bold text-indigo-900 mb-4">Job Description</h3>
               <div className="text-gray-600 leading-relaxed">
-                {app.jobDescription || app.job?.description || "No description available."}
+                {app.description || app.job?.description || "No description available."}
               </div>
             </div>
           </div>
@@ -197,17 +200,10 @@ export default function ReviewApplicationPage() {
               </div>
             </div>
 
-            {/* الملف الشخصي المرفق */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-              <h4 className="text-indigo-900 font-bold text-sm mb-4">Submitted Documents</h4>
-              <button className="w-full py-3 bg-gray-50 hover:bg-indigo-50 text-indigo-700 rounded-xl font-bold text-xs transition-all border border-dashed border-gray-200 flex items-center justify-center gap-2">
-                <i className="fa-solid fa-file-pdf"></i>
-                View Submitted CV
-              </button>
-            </div>
+         
 
             {/* خيار سحب الطلب (يظهر فقط إذا كان الطلب Pending) */}
-            {app.status === 'Pending' && (
+            {  (
               <div className="p-6 bg-red-50 border border-red-100 rounded-2xl">
                 <h4 className="text-red-800 font-black text-xs mb-2 uppercase">Danger Zone</h4>
                 <p className="text-red-600 text-[11px] mb-4 leading-relaxed">

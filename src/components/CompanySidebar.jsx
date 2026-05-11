@@ -10,15 +10,16 @@ const CompanySidebar = ({ companyId, companyLogo, companyName }) => {
   const menuItems = [
     { name: 'Overview', path: `/company-dashboard/${companyId}`, icon: 'fa-chart-pie' },
     { name: 'My Jobs', path: `/company-jobs/${companyId}`, icon: 'fa-briefcase' },
-    { name: 'Applicants', path: `/applicants/${companyId}`, icon: 'fa-users' },
-    { name: 'Settings', path: `/settings/${companyId}`, icon: 'fa-gear' },
+     { name: 'Settings', path: `/settings/${companyId}`, icon: 'fa-gear' },
   ];
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/login');
   };
-
+ const handleBackToProfile = () => {
+    navigate('/profile');
+  };
   return (
     <div className="w-72 bg-slate-900 min-h-screen p-6 flex flex-col sticky top-0 h-screen shadow-2xl">
       
@@ -31,7 +32,13 @@ const CompanySidebar = ({ companyId, companyLogo, companyName }) => {
           Doroop <span className="text-indigo-500 text-xs not-italic font-bold ml-1 tracking-widest">BIZ</span>
         </span>
       </div>
-
+   <button
+        onClick={handleBackToProfile}
+        className="w-full flex items-center gap-4 px-6 py-4 rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest text-slate-300 hover:bg-slate-800 hover:text-white transition-all mb-6"
+      >
+        <i className="fa-solid fa-arrow-left text-lg"></i>
+        Back To Profile
+      </button>
       {/* Navigation Menu */}
       <nav className="flex-1 space-y-2">
         <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-4 mb-6">Main Menu</p>

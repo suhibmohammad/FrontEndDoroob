@@ -78,11 +78,11 @@ export const deleteJob = async (jobId) => {
 // ===================== تعديل وظيفة =====================
 // PUT /api/v1/job/{jobId}?adminId=...
 // Body: { title, description, salary, location, typeJob, experienceLevel, skills }
-export const updateJob = async (jobId, adminId, jobData) => {
+export const updateJob = async (jobId, jobData) => {
     try {
         const token = localStorage.getItem('token');
         const response = await Api.put(`/job/${jobId}`, jobData, {
-            params: { adminId },
+         
             headers: {
                 'Authorization': `Bearer ${token}`
             }

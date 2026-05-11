@@ -24,7 +24,7 @@ const LeftSidebar = ({ user }) => {
             <motion.img
               whileHover={{ rotate: 5, scale: 1.05 }}
               className="w-24 h-24 rounded-[2.2rem] object-cover border-4 border-white shadow-2xl transition-all"
-              src={user?.profileImageUrl || '/default-avatar.png'}
+              src={user?.profileImageUrl || '/Abood.png'}
               alt="Profile"
             />
             <span className="absolute bottom-1 right-1 w-5 h-5 bg-emerald-500 border-4 border-white rounded-full"></span>
@@ -32,10 +32,10 @@ const LeftSidebar = ({ user }) => {
           
           <div className="text-center mt-4">
             <h3 className="font-black text-slate-900 tracking-tight leading-tight">
-              {user?.fullName || "Karam Ignaim"}
+              {user?.fullName || "User Name"}
             </h3>
             <p className="text-[10px] text-indigo-600 font-black uppercase tracking-widest mt-1">
-              {user?.targetTitle || 'Software Engineer'}
+              {user?.targetTitle || ''}
             </p>
           </div>
 

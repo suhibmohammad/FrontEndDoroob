@@ -19,7 +19,7 @@ const mapJob = (job) => ({
     id: job.id,
     title: job.title,
     company: job.companyName || 'Unknown Company',
-    logo: '/googleLogo.png',
+    logo: job.logoUrl||'/googleLogo.png',
     date: job.createdAt
         ? new Date(job.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
         : '',

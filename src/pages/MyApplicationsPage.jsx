@@ -38,7 +38,10 @@ export default function MyApplicationsPage() {
     const fetchMyApps = async () => {
       try {
         setLoading(true);
+        console.log('hello');
+        
         const response = await getMyApplications(1, 50);
+        console.log(response.data);
         
         // استخراج المصفوفة بناءً على هيكلية الرد من السيرفر
         const dataArray = response.data?.applications || response.data?.items || response.data || [];
@@ -122,7 +125,7 @@ export default function MyApplicationsPage() {
                         <div className="flex items-center gap-5">
                           <div className="bg-slate-50 border border-slate-100 rounded-2xl p-2 w-16 h-16 flex items-center justify-center shadow-inner group-hover:bg-white transition-colors">
                             <img 
-                              src={app.companyLogo || '/default-company.png'} 
+                              src={ `${app.companyLogoUrl||'/googleLogo.png'}`} 
                               alt="Company" 
                               className="w-12 h-12 object-contain" 
                             />

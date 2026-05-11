@@ -18,7 +18,7 @@ export default function EmailVerification() {
   // منع الدخول للصفحة إذا لم يكن هناك إيميل
   useEffect(() => {
     if (!userEmail) {
-      // navigate("/signup"); // فعلها وقت الحاجة
+       navigate("/signup"); // فعلها وقت الحاجة
     }
   }, [userEmail, navigate]);
 

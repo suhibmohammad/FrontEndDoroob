@@ -71,7 +71,8 @@ export default function MyJobs() {
                 ? selectedJob.skills.split(',').map(s => s.trim()).filter(s => s !== "")
                 : selectedJob.skills
       };
-
+      console.log(selectedJob.id);
+      
       await updateJob(selectedJob.id, payload);
       
       setJobs(prev => prev.map(j => j.id === selectedJob.id ? { ...j, ...payload } : j));

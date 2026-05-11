@@ -40,16 +40,24 @@ export default function JobsPage() {
 
   // --- Handlers ---
   const handleSearch = async () => {
-    setCurrentPage(1);
-    if (search.trim()) {
-      setIsSkillSearch(true);
-      await fetchJobsBySkill(search.trim(), 1, 50);
-    } else {
-      setIsSkillSearch(false);
-      await fetchJobs();
-    }
-  };
+  const value = search.trim();
 
+  setCurrentPage(1);
+
+  // إذا فارغ
+  if (!value) {
+    setIsSkillSearch(false);
+    await fetchJobs(); // رجع كل الوظائف
+    return;
+  }
+
+  try {
+    setIsSkillSearch(true);
+    await fetchJobsBySkill(value, 1, 50);
+  } catch (error) {
+    console.error(error);
+  }
+};
   const handleClearSearch = async () => {
     setSearch('');
     setIsSkillSearch(false);
