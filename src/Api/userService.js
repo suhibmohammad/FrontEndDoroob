@@ -1,7 +1,7 @@
 import Api from "axios";
 
 
-const API_URL = "http://doroob.runasp.net/api/v1/users";
+const API_URL = "https://doroob.runasp.net/api/v1/users";
 export const getUserProfile = async () => {
     try {
         

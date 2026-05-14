@@ -1,7 +1,7 @@
 import axios from "axios";
 import Api from './axiosConfig.js';
 
-const API_URL = "http://doroob.runasp.net/api/v1/auth";
+const API_URL = "https://doroob.runasp.net/api/v1/auth";
 
 // ===================== تسجيل الدخول =====================
 export const login = async (credentials) => {

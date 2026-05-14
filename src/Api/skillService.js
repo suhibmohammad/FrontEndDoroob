@@ -1,7 +1,7 @@
 import axios from "axios";
 
 
-const API_URL = "http://doroob.runasp.net/api/v1/skill";
+const API_URL = "https://doroob.runasp.net/api/v1/skill";
 export const deleteSkill = async (skillId) => {
     try {
         const token= localStorage.getItem('token');

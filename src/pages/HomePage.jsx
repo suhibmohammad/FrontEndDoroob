@@ -57,7 +57,7 @@ export default function HomePage() {
       if (!user?.id) { setIsLoadingData(false); return; }
       try {
         const token = localStorage.getItem('token');
-        const response = await axios.get(`http://doroob.runasp.net/api/Dashboard/${user.id}`, {
+        const response = await axios.get(`https://doroob.runasp.net/api/Dashboard/${user.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (response.status === 200) setUser(prev => ({ ...prev, ...response.data }));
@@ -74,7 +74,7 @@ export default function HomePage() {
     const token = localStorage.getItem('token');
     setIsUploading(true);
     try {
-      const updated = await axios.post(`http://doroob.runasp.net/api/Resume/upload-resume/${user.id}`, formData, {
+      const updated = await axios.post(`https://doroob.runasp.net/api/Resume/upload-resume/${user.id}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data', 'Authorization': `Bearer ${token}` }
       });
       if (updated.status === 200) {
@@ -89,7 +89,7 @@ export default function HomePage() {
     const token = localStorage.getItem('token');
     setIsAnalyzing(true);
     try {
-      const response = await axios.post(`http://doroob.runasp.net/api/Dashboard/analyze-profile/${user.id}`, {}, {
+      const response = await axios.post(`https://doroob.runasp.net/api/Dashboard/analyze-profile/${user.id}`, {}, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.status === 200) setUser(prev => ({ ...prev, ...response.data }));

@@ -138,7 +138,7 @@ export default function ProfilePage() {
 
     try {
       setCvAnalyzing(true);
-      await axios.post(`http://doroob.runasp.net/api/Resume/upload-resume/${globalUser.id}`, formData, {
+      await axios.post(`https://doroob.runasp.net/api/Resume/upload-resume/${globalUser.id}`, formData, {
           headers: { 'Content-Type': 'multipart/form-data', 'Authorization': `Bearer ${token}` }
       });
       alert("CV Analyzed! Refreshing profile...");
