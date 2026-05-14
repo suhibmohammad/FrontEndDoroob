@@ -57,7 +57,7 @@ export default function ProfilePage() {
         const token = localStorage.getItem('token');
         const [profileData, companiesRes] = await Promise.all([
           getUserProfile(),
-          axios.get('http://doroob.runasp.net/api/v1/company/my-companies', {
+          axios.get('https://doroob.runasp.net/api/v1/company/my-companies', {
             headers: { 'Authorization': `Bearer ${token}` }
           }).catch(() => ({ data: [] }))
         ]);

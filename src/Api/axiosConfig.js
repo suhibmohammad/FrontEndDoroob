@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'httpsd://doroob.runasp.net/api/v1', 
+  baseURL: 'https://doroob.runasp.net/api/v1', 
   headers: {
     'Content-Type': 'application/json',
   },

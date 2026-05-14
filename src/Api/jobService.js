@@ -48,7 +48,8 @@ export const getJobById = async (jobId) => {
 // ===================== البحث عن وظائف بالمهارة =====================
 // GET /api/v1/job/search-by-skill?page=...&pageSize=...&skill=...
 export const searchJobsBySkill = async (skill, page = 1, pageSize = 10) => {
-    try {
+    try { 
+        console.log(skill)
         const response = await Api.get('/job/search-by-skill', {
             params: { skill, page, pageSize }
         });
